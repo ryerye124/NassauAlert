@@ -130,11 +130,54 @@
 <body>
 
 <!-- Title Bar -->
+<!-- Title Bar (same HTML shell you use) -->
 <div id="title-bar">
   <span id="zulu-time"></span>
   <span id="alert-ticker" class="ticker">Loading alerts...</span>
   <span id="est-time"></span>
 </div>
+
+<style>
+  #alert-ticker { margin: 0 20px; color: #ff0; white-space: nowrap; overflow: hidden; max-width: 40%; }
+  .ticker span { display: inline-block; padding-left: 100%; animation: ticker-scroll 150s linear infinite; }
+  @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+</style>
+
+<script>
+const GH_ALERTS_URL =
+  "https://raw.githubusercontent.com/YOURUSER/fire-dashboard-data/refs/heads/main/alerts.json";
+
+async function loadGithubAlerts() {
+  try {
+    // cache-buster param
+    const res = await fetch(`${GH_ALERTS_URL}?v=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const items = await res.json(); // [{time, alert, id}]
+    return Array.isArray(items) ? items : [];
+  } catch (e) {
+    console.error(e);
+    return [];
+  }
+}
+
+function renderTicker(items) {
+  const ticker = document.getElementById("alert-ticker");
+  if (!items.length) {
+    ticker.textContent = "No current incident alerts";
+    return;
+  }
+  const messages = items.map(a => a.alert).filter(Boolean);
+  ticker.innerHTML = `<span>${messages.join("  •  ")}</span>`;
+}
+
+async function refreshTicker() {
+  const data = await loadGithubAlerts();
+  renderTicker(data);
+}
+setInterval(refreshTicker, 30_000);
+refreshTicker();
+</script>
+
 
 <!-- Dashboard Grid -->
 <div id="dashboard"></div>
