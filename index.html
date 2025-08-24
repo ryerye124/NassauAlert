@@ -175,7 +175,7 @@
   // ALERT TICKER
   async function loadAlerts() {
     try {
-      const res = await fetch("YOUR_APPS_SCRIPT_URL_HERE");
+      const res = await fetch("https://script.google.com/macros/s/AKfycbyNjoB2e9xW6J1aq3zUEox74jwPfVSUKk3rbkq2jZylAJY-nq0xGMd7DBz660UK3QKB/exec");
       const data = await res.json();
       const ticker = document.getElementById("ticker");
       if (data.alerts && data.alerts.length) {
