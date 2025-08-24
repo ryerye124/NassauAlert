@@ -1,190 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Nassau Alerts Command Center</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      color: #222;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
+<meta charset="UTF-8">
+<title>Nassau Alerts Command Center</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
 
-    /* ===== HEADER ===== */
-    header {
-      background: #111;
-      color: #fff;
-      text-align: center;
-      padding: 15px;
-      font-size: 28px;
-      font-weight: bold;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
+  /* HEADER */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #222;
+    padding: 10px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    font-weight: bold;
+  }
+  header div { min-width: 150px; text-align: center; }
 
-    /* ===== TICKER ===== */
-    .ticker-wrap {
-      overflow: hidden;
-      background: #222;
-      height: 30px;
-      position: sticky;
-      top: 58px; /* header height */
-      z-index: 999;
-    }
+  /* TICKER */
+  .ticker-wrap {
+    overflow: hidden;
+    background: #333;
+    height: 30px;
+    position: sticky;
+    top: 50px;
+    z-index: 999;
+  }
+  .ticker {
+    display: inline-block;
+    white-space: nowrap;
+    padding-left: 100%;
+    animation: scroll 25s linear infinite;
+    color: #ffcc00;
+    line-height: 30px;
+  }
+  @keyframes scroll {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-100%); }
+  }
 
-    .ticker {
-      display: inline-block;
-      white-space: nowrap;
-      padding-left: 100%;
-      animation: ticker 25s linear infinite;
-      color: #ffcc00;
-      font-size: 16px;
-      line-height: 30px;
-    }
+  /* MAIN GRID */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: auto 300px;
+    gap: 10px;
+    padding: 10px;
+  }
 
-    @keyframes ticker {
-      0% { transform: translateX(0%); }
-      100% { transform: translateX(-100%); }
-    }
+  .card {
+    background: #222;
+    border-radius: 10px;
+    padding: 5px;
+  }
+  .card h2 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 3px;
+  }
 
-    /* ===== MAIN GRID ===== */
-    main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      grid-gap: 20px;
-      padding: 20px;
-    }
+  iframe { width: 100%; height: 100%; border: none; }
 
-    .card {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      padding: 10px;
-      overflow: hidden;
-    }
+  /* RADIO FEEDS ROW */
+  .radio-row {
+    display: flex;
+    gap: 5px;
+    height: 100%;
+  }
+  .radio-row iframe { flex: 1; height: 100%; }
 
-    .card h2 {
-      margin-top: 0;
-      font-size: 18px;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 5px;
-    }
-
-    iframe {
-      width: 100%;
-      height: 300px;
-      border: none;
-    }
-
-    /* ===== FOOTER ===== */
-    footer {
-      background: #111;
-      color: #aaa;
-      font-size: 12px;
-      text-align: center;
-      padding: 15px;
-    }
-
-    footer a {
-      color: #ffcc00;
-      text-decoration: none;
-    }
-  </style>
+  /* FOOTER */
+  footer {
+    background: #222;
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+    color: #aaa;
+  }
+  footer a { color: #ffcc00; text-decoration: none; }
+</style>
 </head>
 <body>
 
-  <!-- HEADER -->
-  <header>
-    Nassau Alerts
-  </header>
+<!-- HEADER -->
+<header>
+  <div id="est-time">EST: --:--:--</div>
+  <div>Nassau Alerts</div>
+  <div id="zulu-time">Zulu: --:--:--</div>
+</header>
 
-  <!-- TICKER -->
-  <div class="ticker-wrap">
-    <div class="ticker" id="ticker">Loading alerts...</div>
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker" id="ticker">Loading alerts...</div>
+</div>
+
+<!-- MAIN GRID -->
+<main>
+  <div class="card">
+    <h2>Radar (NWS)</h2>
+    <iframe src="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy03My4yNzMsNDAuOTIxXSwibG9jYXRpb24iOm51bGwsInpvb20iOjcuODY5NzQ0MDU0MzE2MTM4LCJmaWx0ZXIiOm51bGwsImxheWVyIjoic3JfYnJlZiIsInN0YXRpb24iOiJLT0tYIn0sImFuaW1hdGluZyI6dHJ1ZSwiYmFzZSI6InRvcG9ncmFwaGljIiwiYXJ0Y2MiOmZhbHNlLCJjb3VudHkiOnRydWUsImN3YSI6ZmFsc2UsInJmYyI6ZmFsc2UsInN0YXRlIjpmYWxzZSwibWVudSI6dHJ1ZSwic2hvcnRGdXNlZE9ubHkiOnRydWUsIm9wYWNpdHkiOnsiYWxlcnRzIjowLjgsImxvY2FsIjowLjYsImxvY2FsU3RhdGlvbnMiOjAuOCwibmF0aW9uYWwiOjAuNn19"></iframe>
   </div>
 
-  <!-- MAIN DASHBOARD -->
-  <main>
-    <div class="card">
-      <h2>Radar (NWS)</h2>
-      <iframe src="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy03My4yNzMsNDAuOTIxXSwibG9jYXRpb24iOm51bGwsInpvb20iOjcuODY5NzQ0MDU0MzE2MTM4LCJmaWx0ZXIiOm51bGwsImxheWVyIjoic3JfYnJlZiIsInN0YXRpb24iOiJLT0tYIn0sImFuaW1hdGluZyI6dHJ1ZSwiYmFzZSI6InRvcG9ncmFwaGljIiwiYXJ0Y2MiOmZhbHNlLCJjb3VudHkiOnRydWUsImN3YSI6ZmFsc2UsInJmYyI6ZmFsc2UsInN0YXRlIjpmYWxzZSwibWVudSI6dHJ1ZSwic2hvcnRGdXNlZE9ubHkiOnRydWUsIm9wYWNpdHkiOnsiYWxlcnRzIjowLjgsImxvY2FsIjowLjYsImxvY2FsU3RhdGlvbnMiOjAuOCwibmF0aW9uYWwiOjAuNn19"></iframe>
-    </div>
+  <div class="card">
+    <h2>Fire & Smoke Map (NWS)</h2>
+    <iframe src="https://fire.airnow.gov/"></iframe>
+  </div>
 
-    <div class="card">
-      <h2>Fire & Smoke Map (NWS)</h2>
-      <iframe src="https://fire.airnow.gov/"></iframe>
-    </div>
+  <!-- Bottom right radio feeds -->
+  <div class="radio-row">
+    <iframe src="https://example.com/radio1"></iframe>
+    <iframe src="https://example.com/radio2"></iframe>
+    <iframe src="https://example.com/radio3"></iframe>
+  </div>
+</main>
 
-    <div class="card">
-      <h2>Eastern Standard Time</h2>
-      <div id="estClock"></div>
-    </div>
+<!-- FOOTER -->
+<footer>
+  The information displayed and broadcasted is publicly available. 
+  The site owner does not own the information. 
+  The BRYX feed is possible with continued access granted by local departments. 
+  Email <a href="mailto:alertsnassau@gmail.com">alertsnassau@gmail.com</a> to add your department!
+</footer>
 
-    <div class="card">
-      <h2>Zulu Time</h2>
-      <div id="zuluClock"></div>
-    </div>
+<script>
+  // CLOCKS
+  function updateClocks() {
+    const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+    const zulu = new Date().toISOString().substring(11,19) + "Z";
+    document.getElementById("est-time").textContent = "EST: " + est;
+    document.getElementById("zulu-time").textContent = "Zulu: " + zulu;
+  }
+  setInterval(updateClocks, 1000);
+  updateClocks();
 
-    <div class="card">
-      <h2>NY Wildfire Tracker </h2>
-      <iframe src="https://www.mapofire.com/state/new-york"></iframe>
-    </div>
-
-    <div class="card">
-      <h2>Live Radio Feed</h2>
-      <iframe src="javascript:LaunchWindow('/webPlayer/1635','1635','height=750,width=780,scrollbars=no')"></iframe>
-    </div>
-
-    <!-- Add more cards as needed -->
-  </main>
-
-  <!-- FOOTER -->
-  <footer>
-    The information displayed and broadcasted is publicly available and the site owner does not own the information. 
-    The BRYX feed is possible with continued access granted by local departments, 
-    email <a href="mailto:alertsnassau@gmail.com">alertsnassau@gmail.com</a> so we can add your department!
-  </footer>
-
-  <!-- JAVASCRIPT -->
-  <script>
-    // ====== ALERTS TICKER ======
-    async function loadAlerts() {
-      try {
-        const res = await fetch("https://script.google.com/macros/s/AKfycbyNjoB2e9xW6J1aq3zUEox74jwPfVSUKk3rbkq2jZylAJY-nq0xGMd7DBz660UK3QKB/exec");
-        const data = await res.json();
-        const ticker = document.getElementById("ticker");
-
-        if (data.alerts && data.alerts.length > 0) {
-          ticker.textContent = data.alerts.map(a => a.subject).join(" • ");
-        } else {
-          ticker.textContent = "No new alerts at this time.";
-        }
-      } catch (err) {
-        console.error("Failed to load alerts:", err);
-        document.getElementById("ticker").textContent = "Error loading alerts feed.";
+  // ALERT TICKER
+  async function loadAlerts() {
+    try {
+      const res = await fetch("https://script.google.com/macros/s/AKfycbyNjoB2e9xW6J1aq3zUEox74jwPfVSUKk3rbkq2jZylAJY-nq0xGMd7DBz660UK3QKB/exec");
+      const data = await res.json();
+      const ticker = document.getElementById("ticker");
+      if (data.alerts && data.alerts.length) {
+        ticker.textContent = data.alerts.map(a=>a.subject).join(" • ");
+      } else {
+        ticker.textContent = "No new alerts at this time.";
       }
+    } catch(e) {
+      console.error(e);
+      document.getElementById("ticker").textContent = "Error loading alerts feed.";
     }
-    setInterval(loadAlerts, 60000); // refresh every 60s
-    loadAlerts();
-
-    // ====== CLOCKS ======
-    function updateClocks() {
-      const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
-      const zulu = new Date().toUTCString();
-
-      document.getElementById("estClock").textContent = est;
-      document.getElementById("zuluClock").textContent = zulu;
-    }
-    setInterval(updateClocks, 1000);
-    updateClocks();
-  </script>
-
+  }
+  setInterval(loadAlerts, 60000);
+  loadAlerts();
+</script>
 </body>
 </html>
-
