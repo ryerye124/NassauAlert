@@ -53,9 +53,10 @@
     flex: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    grid-auto-rows: 300px;
+    grid-template-rows: 2fr 1fr;
     gap: 10px;
     padding: 10px;
+    height: calc(100vh - 100px); /* adjust for header + ticker */
   }
 
   .card {
@@ -73,6 +74,7 @@
 
   iframe { width: 100%; height: 100%; border: none; }
 
+  /* Nested grid for radios under Radar */
   .radio-container {
     display: grid;
     grid-template-rows: 1fr 1fr;
@@ -95,16 +97,16 @@
   @media (max-width: 1024px) {
     main {
       grid-template-columns: repeat(2, 1fr);
-      grid-auto-rows: 250px;
+      grid-template-rows: 2fr 1fr 1fr; /* adjust for extra row */
     }
-    .card:nth-child(4) { grid-column: span 2; } /* Radio feeds */
-    .card:nth-child(5) { grid-column: span 2; } /* Alert Map */
+    .card:nth-child(4) { grid-column: span 2; } /* radios container */
+    .card:nth-child(5) { grid-column: span 2; } /* alert map */
   }
 
   @media (max-width: 600px) {
     main {
       grid-template-columns: 1fr;
-      grid-auto-rows: 250px;
+      grid-template-rows: repeat(5, 1fr);
     }
     .card { grid-column: span 1; }
   }
@@ -123,6 +125,7 @@
 </div>
 
 <main>
+  <!-- Top row: 3 equal maps -->
   <div class="card">
     <h2>Radar (NWS)</h2>
     <iframe src="https://radar.weather.gov/"></iframe>
@@ -136,6 +139,7 @@
     <iframe src="https://www.mapofire.com/state/new-york"></iframe>
   </div>
 
+  <!-- Bottom row: radios under Radar, alert map -->
   <div class="card radio-container">
     <iframe src="https://example.com/radio1"></iframe>
     <iframe src="https://example.com/radio2"></iframe>
@@ -145,6 +149,7 @@
     <h2>Alert Map</h2>
     <div id="alertMap"></div>
   </div>
+
 </main>
 
 <footer>
@@ -156,6 +161,7 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+  // CLOCKS
   function updateClocks() {
     const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
     const zulu = new Date().toISOString().substring(11,19) + "Z";
@@ -165,6 +171,7 @@
   setInterval(updateClocks, 1000);
   updateClocks();
 
+  // ALERT TICKER
   async function loadAlerts() {
     try {
       const res = await fetch("YOUR_APPS_SCRIPT_URL_HERE");
@@ -184,6 +191,7 @@
   setInterval(loadAlerts, 60000);
   loadAlerts();
 
+  // ALERT MAP
   const map = L.map('alertMap').setView([40.7, -73.6], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
   const markersLayer = L.layerGroup().addTo(map);
