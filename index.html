@@ -35,7 +35,7 @@
     background: #333;
     height: 30px;
     position: sticky;
-    top: 50px;
+    top: 80px;
     z-index: 999;
   }
   .ticker {
@@ -47,6 +47,46 @@
     line-height: 30px;
   }
   @keyframes scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
+
+  .critical-wrap {
+  overflow: hidden;
+  background: #4a0000; /* dark red base */
+  height: 30px;
+  position: sticky;
+  top: 50px; /* header is ~50px; this pushes regular ticker down by +30px */
+  z-index: 9999;
+  border-bottom: 1px solid #660000;
+}
+.critical {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 12px;
+  color: #fff;
+  line-height: 30px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.critical .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #220000;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #660000;
+}
+
+/* Flash animation: 2 flashes @ 600ms each */
+@keyframes critFlash {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(2.2); }
+  100% { filter: brightness(1); }
+}
+.critical.flash-twice {
+  animation: critFlash 0.6s ease-in-out 2;
+}
+
 
   /* MAIN GRID */
   main {
@@ -113,6 +153,10 @@
   <div id="zulu-time">Zulu: --:--:--</div>
 </header>
 
+  <div class="critical-wrap">
+  <div class="critical" id="criticalBar">No critical alerts.</div>
+</div>
+
 <div class="ticker-wrap">
   <div class="ticker" id="ticker">Loading alerts...</div>
 </div>
@@ -154,6 +198,136 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+  /* === existing code above stays === */
+
+  /* === NEW: critical feed config === */
+  const CRIT_URL = 'YOUR_WEB_APP_URL/exec?channel=critical&limit=40';
+
+  /* === NEW: simple WebAudio beep (440Hz) === */
+  function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      let when = ctx.currentTime;
+      for (let i = 0; i < times; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.001, when);
+        gain.gain.exponentialRampToValueAtTime(0.3, when + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, when + durationMs/1000);
+
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(when);
+        osc.stop(when + durationMs/1000);
+
+        when += (durationMs + gapMs)/1000;
+      }
+      // auto-close to release audio context
+      setTimeout(() => ctx.close(), (times*(durationMs+gapMs))+200);
+    } catch {}
+  }
+
+  /* === NEW: state for critical bar === */
+  const criticalBar = document.getElementById('criticalBar');
+  const critLive = new Map(); // id -> { expiresAt, el }
+
+  function makeCritChip(a) {
+    const dot = document.createElement('span');
+    dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
+    const txt = document.createElement('span');
+    txt.textContent = `${(a.category||'CRITICAL').toUpperCase()} • ${a.location||''}${a.city? ', '+a.city:''} • ${fmtTime(a.eventTimestamp)}`;
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.append(dot, txt);
+    return chip;
+  }
+
+  function cleanupCritical() {
+    const now = Date.now();
+    for (const [id, obj] of critLive) {
+      if (obj.expiresAt <= now) {
+        obj.el?.remove();
+        critLive.delete(id);
+      }
+    }
+    if (critLive.size === 0) {
+      criticalBar.textContent = 'No critical alerts.';
+    }
+  }
+
+  function cacheBusted(url) {
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}_cb=${Date.now()}`;
+  }
+
+  async function fetchCriticalOnce() {
+    const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    return (json.results || []).map(r => ({
+      id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
+      category: r.category,
+      location: r.location,
+      city: r.city,
+      eventTimestamp: r.eventTimestamp
+    })).filter(x => x.eventTimestamp);
+  }
+
+  async function tickCritical() {
+    try {
+      const items = await fetchCriticalOnce();
+      items.sort((a,b) => parseTs(b.eventTimestamp) - parseTs(a.eventTimestamp));
+
+      // If there are new ones, we’ll flash + beep once per batch
+      let introduced = 0;
+      const now = Date.now();
+
+      // Show newest first (prepend)
+      for (const a of items) {
+        const id = a.id;
+        const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
+        if (critLive.has(id)) {
+          critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
+          continue;
+        }
+        // remove placeholder text if present
+        if (criticalBar.textContent === 'No critical alerts.') {
+          criticalBar.textContent = '';
+        }
+        const chip = makeCritChip(a);
+        criticalBar.insertBefore(chip, criticalBar.firstChild);
+        critLive.set(id, { el: chip, expiresAt: exp });
+        introduced++;
+      }
+
+      if (introduced > 0) {
+        // Flash the entire bar twice, then it stays static
+        criticalBar.classList.remove('flash-twice'); // reset if still on
+        void criticalBar.offsetWidth; // reflow to restart animation
+        criticalBar.classList.add('flash-twice');
+
+        // Double beep
+        beep(2, 140, 120, 988);
+
+        // After animation ends, ensure class is removed so it’s static
+        criticalBar.addEventListener('animationend', () => {
+          criticalBar.classList.remove('flash-twice');
+        }, { once: true });
+      }
+
+      cleanupCritical();
+    } catch (e) {
+      console.error('Critical fetch failed:', e);
+    }
+  }
+
+  // Start a separate poller (can be a bit faster than the normal ticker if you want)
+  setInterval(tickCritical, 15000); // every 15s
+  tickCritical();
+
+  /* === existing normal ticker/map code below stays as you have it === */
+
   // ===== CLOCKS =====
   function updateClocks() {
     const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
