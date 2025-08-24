@@ -171,7 +171,7 @@
   const markersLayer = L.layerGroup().addTo(map);
 
   // ===== CONFIG =====
-  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbwCN-Sw2CU9dXc0EugyopFiAl5qqZHNeCd36SQ-pEYL2gClXyVVC5vXWPWbDBdikbAM/exec/exec?limit=200'; // keep /exec
+  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbwCN-Sw2CU9dXc0EugyopFiAl5qqZHNeCd36SQ-pEYL2gClXyVVC5vXWPWbDBdikbAM/exec?limit=200';
   const POLL_MS = 20_000;
   const TTL_MS  = 15 * 60 * 1000;
 
@@ -180,7 +180,20 @@
   const tickerEl = document.getElementById('ticker');
 
   // ===== UTILS =====
-  const fmtTime = (v) => new Date(v).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  function parseTs(s) {
+    if (!s) return NaN;
+    const cleaned = String(s).trim().replace(/(\.\d{3})\d+$/, '$1');
+    const isoGuess = cleaned.includes('T') ? cleaned : cleaned.replace(' ', 'T');
+    const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(isoGuess);
+    const finalStr = hasTZ ? isoGuess : isoGuess + 'Z';
+    const t = Date.parse(finalStr);
+    return Number.isNaN(t) ? Date.parse(cleaned) : t;
+  }
+  const fmtTime = (v) => {
+    const ms = typeof v === 'number' ? v : parseTs(v);
+    return Number.isNaN(ms) ? '—' : new Date(ms).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  };
+
   function colorFor(a) {
     const cat = (a.category||'').toLowerCase();
     const call = (a.callType||'').toLowerCase();
@@ -198,18 +211,6 @@
     wrap.append(dot, text);
     return wrap;
   }
-  function parseTs(s) {
-  if (!s) return NaN;
-  // Trim microseconds if present (e.g., .982000)
-  const cleaned = String(s).trim().replace(/(\.\d{3})\d+$/, '$1');
-  // Replace space with 'T' so Date can parse it; assume UTC if no timezone
-  // Example: "2025-08-24 18:21:47.982" -> "2025-08-24T18:21:47.982Z"
-  const isoGuess = cleaned.includes('T') ? cleaned : cleaned.replace(' ', 'T');
-  const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(isoGuess);
-  const finalStr = hasTZ ? isoGuess : isoGuess + 'Z';
-  const t = Date.parse(finalStr);
-  return Number.isNaN(t) ? Date.parse(cleaned) : t;
-}
   function makeMarker(lat, lng, color, a) {
     return L.circleMarker([lat, lng], {
       radius: 8, color, weight: 2, fillColor: color, fillOpacity: 0.85
@@ -232,31 +233,27 @@
       tickerEl.dataset.placeholderShown = '1';
     }
   }
-
-  // Build a cache-busted URL every poll to defeat any intermediary caching
   function cacheBusted(url) {
     const sep = url.includes('?') ? '&' : '?';
     return `${url}${sep}_cb=${Date.now()}`;
   }
 
   async function fetchAlertsOnce() {
-  const res = await fetch(cacheBusted(ALERTS_URL), { cache: 'no-store' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const json = await res.json();
-  return (json.results || []).map(r => ({
-    id: r.uniqueKey || `${r.incidentId || ''}-${r.eventTimestamp || ''}`,
-    category: r.category,
-    callType: r.callType,
-    location: r.location,
-    city: r.city,
-    eventTimestamp: r.eventTimestamp,
-    lat: r.lat != null ? Number(r.lat) : null,
-    lng: r.lng != null ? Number(r.lng) : null
-  }))
-  // keep rows that at least have a valid time
-  .filter(x => !Number.isNaN(parseTs(x.eventTimestamp)));
-}
-
+    const res = await fetch(cacheBusted(ALERTS_URL), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    return (json.results || []).map(r => ({
+      id: r.uniqueKey || `${r.incidentId || ''}-${r.eventTimestamp || ''}`,
+      category: r.category,
+      callType: r.callType,
+      location: r.location,
+      city: r.city,
+      eventTimestamp: r.eventTimestamp,
+      lat: r.lat != null ? Number(r.lat) : null,
+      lng: r.lng != null ? Number(r.lng) : null
+    }))
+    .filter(x => !Number.isNaN(parseTs(x.eventTimestamp))); // keep even without coords
+  }
 
   let timer = null;
   let cleanupTimer = null;
@@ -264,53 +261,54 @@
   async function tick() {
     try {
       const alerts = await fetchAlertsOnce();
-      alerts.sort((a,b)=> new Date(b.eventTimestamp)-new Date(a.eventTimestamp));
+      alerts.sort((a,b)=> parseTs(b.eventTimestamp) - parseTs(a.eventTimestamp));
       tickerEl.dataset.placeholderShown = ''; // clear placeholder flag
 
       const now = Date.now();
-      // Insert/refresh
+
       for (const a of alerts) {
         const id = a.id;
-        // inside the for (const a of alerts) loop
-const exp = Math.max(Date.now(), parseTs(a.eventTimestamp) + TTL_MS);
+        const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
 
-const color = colorFor(a);
-const chip  = makeTickerSpan(a, color);
-tickerEl.insertBefore(chip, tickerEl.firstChild);
+        // ✅ de-dup: if already present, just refresh expiry
+        if (live.has(id)) {
+          live.get(id).expiresAt = Math.max(live.get(id).expiresAt, exp);
+          continue;
+        }
 
-let marker = null;
-if (typeof a.lat === 'number' && typeof a.lng === 'number' && isFinite(a.lat) && isFinite(a.lng)) {
-  marker = makeMarker(a.lat, a.lng, color, a);
-}
+        const color = colorFor(a);
+        const chip  = makeTickerSpan(a, color);
+        tickerEl.insertBefore(chip, tickerEl.firstChild);
 
-live.set(id, { marker, tickerSpan: chip, expiresAt: exp });
+        let marker = null;
+        if (typeof a.lat === 'number' && typeof a.lng === 'number' && isFinite(a.lat) && isFinite(a.lng)) {
+          marker = makeMarker(a.lat, a.lng, color, a);
+        }
 
-      // Clean up expired on each cycle
+        live.set(id, { marker, tickerSpan: chip, expiresAt: exp });
+      }
+
+      // ✅ run once per tick, not inside the loop
       cleanupExpired();
-
-      // Optional: log last updated to console for quick sanity check
       console.debug('BRYX tick', new Date().toLocaleTimeString(), `alerts now=${live.size}`);
     } catch (err) {
       console.error('BRYX fetch failed:', err);
-      // keep the ticker text as-is; we’ll retry on the next interval
     }
   }
 
-  // Visibility-aware polling (pause when tab hidden to save quota)
   function startPolling() {
     if (timer) return;
     tick(); // immediate
     timer = setInterval(tick, POLL_MS);
     if (!cleanupTimer) cleanupTimer = setInterval(cleanupExpired, 10_000);
   }
-  function stopPolling() {
-    clearInterval(timer); timer = null;
-  }
+  function stopPolling() { clearInterval(timer); timer = null; }
+
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') startPolling();
     else stopPolling();
   });
 
-  // Kick off
   startPolling();
 </script>
+
