@@ -168,10 +168,13 @@
   const map = L.map('alertMap').setView([40.7, -73.6], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 
     { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+
+  // Store markers with expiration
   const markersLayer = L.layerGroup().addTo(map);
+  const markerMap = {};
 
   // ===== LOAD ALERTS FROM APPS SCRIPT =====
-  const ALERTS_URL = "https://script.google.com/macros/s/AKfycbwcNGq_Z_6LpOb5kYHyF4j4AqZ11B5v0pDQRKmILRlS5enFnxFqovsoHZ0qH8EhlvJa/exec"; // replace with your web app URL
+  const ALERTS_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE"; // replace with your web app URL
 
   async function loadAlerts() {
     try {
@@ -187,10 +190,22 @@
         ticker.textContent = "No new alerts at this time.";
       }
 
-      // ----- Map -----
-      markersLayer.clearLayers();
+      const now = new Date().getTime();
+
+      // Remove expired markers
+      for (const key in markerMap) {
+        if (markerMap[key].expires <= now) {
+          markersLayer.removeLayer(markerMap[key].marker);
+          delete markerMap[key];
+        }
+      }
+
+      // Add new markers
       for (const alert of alerts) {
         if (!alert.address) continue;
+        const key = alert.subject + alert.address;
+        if (markerMap[key]) continue; // already exists
+
         let color = 'yellow';
         const type = (alert.type || '').toLowerCase();
         if (type.includes('fire')) color = 'red';
@@ -200,8 +215,9 @@
           const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(alert.address)}`);
           const geoData = await geoRes.json();
           if (geoData.length === 0) continue;
+
           const { lat, lon } = geoData[0];
-          L.circleMarker([lat, lon], {
+          const marker = L.circleMarker([lat, lon], {
             radius: 8,
             fillColor: color,
             color: '#000',
@@ -209,6 +225,10 @@
             opacity: 1,
             fillOpacity: 0.8
           }).bindPopup(`<b>${alert.subject}</b><br>${alert.address}`).addTo(markersLayer);
+
+          // Store marker with 15-min expiration
+          const expires = new Date(alert.timestamp).getTime() + 15*60*1000;
+          markerMap[key] = { marker, expires };
         } catch(err) { console.error("Geocode error:", err); }
       }
 
@@ -218,7 +238,7 @@
     }
   }
 
-  setInterval(loadAlerts, 60000); // refresh every 60s
+  setInterval(loadAlerts, 30000); // refresh every 30s
   loadAlerts();
 </script>
 
