@@ -1,314 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nassau County Fire Ops Dashboard</title>
-<style>
-  body {
-    margin: 0;
-    background: #111;
-    font-family: Arial, sans-serif;
-    margin-top: 50px;
-    color: #0f0;
-  }
+  <meta charset="UTF-8">
+  <title>Nassau Alerts Command Center</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
 
-  /* Title Bar */
-  #title-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background: #222;
-    color: #0f0;
-    font-family: 'Courier New', monospace;
-    font-size: 18px;
-    font-weight: bold;
-    padding: 10px 60px;
-    z-index: 100;
-    display: flex;
-    justify-content: space-between;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-  }
+    /* ===== HEADER ===== */
+    header {
+      background: #111;
+      color: #fff;
+      text-align: center;
+      padding: 15px;
+      font-size: 28px;
+      font-weight: bold;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
 
-  #alert-ticker {
-    margin: 0 20px;
-    color: #ff0;
-    font-family: 'Courier New', monospace;
-    white-space: nowrap;
-    overflow: hidden;
-    max-width: 40%;
-  }
+    /* ===== TICKER ===== */
+    .ticker-wrap {
+      overflow: hidden;
+      background: #222;
+      height: 30px;
+      position: sticky;
+      top: 58px; /* header height */
+      z-index: 999;
+    }
 
-  .ticker span {
-    display: inline-block;
-    padding-left: 100%;
-    animation: ticker-scroll 190s linear infinite;
-  }
+    .ticker {
+      display: inline-block;
+      white-space: nowrap;
+      padding-left: 100%;
+      animation: ticker 25s linear infinite;
+      color: #ffcc00;
+      font-size: 16px;
+      line-height: 30px;
+    }
 
-  @keyframes ticker-scroll {
-    from { transform: translateX(0); }
-    to { transform: translateX(-100%); }
-  }
+    @keyframes ticker {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-100%); }
+    }
 
-  /* Dashboard Grid */
-  #dashboard {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 50vh);
-    gap: 5px;
-    transition: all 0.3s ease;
-  }
+    /* ===== MAIN GRID ===== */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      grid-gap: 20px;
+      padding: 20px;
+    }
 
-  .panel {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    background: #000;
-  }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      padding: 10px;
+      overflow: hidden;
+    }
 
-  .panel iframe,
-  .panel img {
-    width: 100%;
-    height: 100%;
-    border: none;
-    transition: all 0.3s ease;
-    object-fit: contain;
-  }
+    .card h2 {
+      margin-top: 0;
+      font-size: 18px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+    }
 
-  .sub-grid {
-    display: grid;
-    grid-template-rows: 1fr 1fr;
-    gap: 5px;
-    height: 100%;
-  }
+    iframe {
+      width: 100%;
+      height: 300px;
+      border: none;
+    }
 
-  /* Labels */
-  .label {
-    position: absolute;
-    top: 5px;
-    left: 5px;
-    background: rgba(0,0,0,0.85);
-    color: #0f0;
-    padding: 5px 10px;
-    font-size: 15px;
-    font-weight: bold;
-    border-radius: 5px;
-    z-index: 10;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
+    /* ===== FOOTER ===== */
+    footer {
+      background: #111;
+      color: #aaa;
+      font-size: 12px;
+      text-align: center;
+      padding: 15px;
+    }
 
-  .label:hover {
-    color: #fff;
-    background: rgba(0,255,0,0.9);
-    transform: scale(1.05);
-  }
-
-  .panel:hover {
-    box-shadow: 0 0 15px #0f0;
-    transition: box-shadow 0.3s ease;
-  }
-
-  .fullscreen {
-    position: fixed !important;
-    top: 50px;
-    left: 0;
-    width: 100% !important;
-    height: calc(100% - 50px) !important;
-    z-index: 999;
-    grid-column: 1 / -1 !important;
-    grid-row: 1 / -1 !important;
-    background: #000;
-  }
-</style>
+    footer a {
+      color: #ffcc00;
+      text-decoration: none;
+    }
+  </style>
 </head>
 <body>
 
-<!-- Title Bar -->
-<!-- Title Bar (same HTML shell you use) -->
-<div id="title-bar">
-  <span id="zulu-time"></span>
-  <span id="alert-ticker" class="ticker">Loading alerts...</span>
-  <span id="est-time"></span>
-</div>
+  <!-- HEADER -->
+  <header>
+    Nassau Alerts
+  </header>
 
-<style>
-  #alert-ticker { margin: 0 20px; color: #ff0; white-space: nowrap; overflow: hidden; max-width: 40%; }
-  .ticker span { display: inline-block; padding-left: 100%; animation: ticker-scroll 150s linear infinite; }
-  @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-100%); } }
-</style>
+  <!-- TICKER -->
+  <div class="ticker-wrap">
+    <div class="ticker" id="ticker">Loading alerts...</div>
+  </div>
 
-<script>
-const GH_ALERTS_URL =
-  "https://raw.githubusercontent.com/YOURUSER/fire-dashboard-data/refs/heads/main/alerts.json";
+  <!-- MAIN DASHBOARD -->
+  <main>
+    <div class="card">
+      <h2>Radar (NWS)</h2>
+      <iframe src="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy03My4yNzMsNDAuOTIxXSwibG9jYXRpb24iOm51bGwsInpvb20iOjcuODY5NzQ0MDU0MzE2MTM4LCJmaWx0ZXIiOm51bGwsImxheWVyIjoic3JfYnJlZiIsInN0YXRpb24iOiJLT0tYIn0sImFuaW1hdGluZyI6dHJ1ZSwiYmFzZSI6InRvcG9ncmFwaGljIiwiYXJ0Y2MiOmZhbHNlLCJjb3VudHkiOnRydWUsImN3YSI6ZmFsc2UsInJmYyI6ZmFsc2UsInN0YXRlIjpmYWxzZSwibWVudSI6dHJ1ZSwic2hvcnRGdXNlZE9ubHkiOnRydWUsIm9wYWNpdHkiOnsiYWxlcnRzIjowLjgsImxvY2FsIjowLjYsImxvY2FsU3RhdGlvbnMiOjAuOCwibmF0aW9uYWwiOjAuNn19"></iframe>
+    </div>
 
-async function loadGithubAlerts() {
-  try {
-    // cache-buster param
-    const res = await fetch(`${GH_ALERTS_URL}?v=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const items = await res.json(); // [{time, alert, id}]
-    return Array.isArray(items) ? items : [];
-  } catch (e) {
-    console.error(e);
-    return [];
-  }
-}
+    <div class="card">
+      <h2>Fire & Smoke Map (NWS)</h2>
+      <iframe src="https://fire.airnow.gov/"></iframe>
+    </div>
 
-function renderTicker(items) {
-  const ticker = document.getElementById("alert-ticker");
-  if (!items.length) {
-    ticker.textContent = "No current incident alerts";
-    return;
-  }
-  const messages = items.map(a => a.alert).filter(Boolean);
-  ticker.innerHTML = `<span>${messages.join("  •  ")}</span>`;
-}
+    <div class="card">
+      <h2>Eastern Standard Time</h2>
+      <div id="estClock"></div>
+    </div>
 
-async function refreshTicker() {
-  const data = await loadGithubAlerts();
-  renderTicker(data);
-}
-setInterval(refreshTicker, 30_000);
-refreshTicker();
-</script>
+    <div class="card">
+      <h2>Zulu Time</h2>
+      <div id="zuluClock"></div>
+    </div>
 
+    <div class="card">
+      <h2>NY Wildfire Tracker </h2>
+      <iframe src="https://www.mapofire.com/state/new-york"></iframe>
+    </div>
 
-<!-- Dashboard Grid -->
-<div id="dashboard"></div>
+    <div class="card">
+      <h2>Live Radio Feed</h2>
+      <iframe src="javascript:LaunchWindow('/webPlayer/1635','1635','height=750,width=780,scrollbars=no')"></iframe>
+    </div>
 
-<script>
-// ---------------- CONFIG ----------------
-const panels = [
-  { label: "Live Scanner", type: "iframe", src: "https://www.broadcastify.com/webPlayer/1635" },
-  { label: "Fire Weather Map", type: "iframe", src: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ne/FireTemperature/20252351741_GOES19-ABI-ne-FireTemperature-600x600.jpg" },
-  { label: "SPC Fire Outlook", type: "img", src: "https://www.nifc.gov/nicc-files/predictive/outlooks/month1_outlook.png" },
-  { label: "Air Quality / Smoke", type: "iframe", src: "https://fire.airnow.gov/" },
-  { label: "Active Incidents", type: "iframe", src: "https://incidents.fire.ca.gov/active" }, // placeholder
-  { 
-    label: "Sub Grid", 
-    type: "subgrid",
-    children: [
-      { label: "Forecast (NWS)", type: "img", src: "https://graphical.weather.gov/sectors/northeast.php?FireWx" },
-      { label: "Social Feed", type: "iframe", src: "https://twitter.com/FDNYFireWire" }
-    ]
-  }
-];
-// -----------------------------------------
+    <!-- Add more cards as needed -->
+  </main>
 
-// Render Panels
-const dashboard = document.getElementById("dashboard");
-panels.forEach(p => {
-  const panel = document.createElement("div");
-  panel.className = "panel";
+  <!-- FOOTER -->
+  <footer>
+    The information displayed and broadcasted is publicly available and the site owner does not own the information. 
+    The BRYX feed is possible with continued access granted by local departments, 
+    email <a href="mailto:alertsnassau@gmail.com">alertsnassau@gmail.com</a> so we can add your department!
+  </footer>
 
-  if (p.type === "subgrid") {
-    const sub = document.createElement("div");
-    sub.className = "sub-grid";
-    p.children.forEach(c => {
-      const childPanel = document.createElement("div");
-      childPanel.className = "panel";
-      const label = document.createElement("span");
-      label.className = "label";
-      label.textContent = c.label;
-      childPanel.appendChild(label);
-      if (c.type === "iframe") {
-        const iframe = document.createElement("iframe");
-        iframe.src = c.src;
-        childPanel.appendChild(iframe);
-      } else if (c.type === "img") {
-        const img = document.createElement("img");
-        img.src = c.src;
-        childPanel.appendChild(img);
+  <!-- JAVASCRIPT -->
+  <script>
+    // ====== ALERTS TICKER ======
+    async function loadAlerts() {
+      try {
+        const res = await fetch("https://script.google.com/macros/s/AKfycbyNjoB2e9xW6J1aq3zUEox74jwPfVSUKk3rbkq2jZylAJY-nq0xGMd7DBz660UK3QKB/exec");
+        const data = await res.json();
+        const ticker = document.getElementById("ticker");
+
+        if (data.alerts && data.alerts.length > 0) {
+          ticker.textContent = data.alerts.map(a => a.subject).join(" • ");
+        } else {
+          ticker.textContent = "No new alerts at this time.";
+        }
+      } catch (err) {
+        console.error("Failed to load alerts:", err);
+        document.getElementById("ticker").textContent = "Error loading alerts feed.";
       }
-      sub.appendChild(childPanel);
-    });
-    const label = document.createElement("span");
-    label.className = "label";
-    label.textContent = p.label;
-    panel.appendChild(label);
-    panel.appendChild(sub);
-  } else {
-    const label = document.createElement("span");
-    label.className = "label";
-    label.textContent = p.label;
-    panel.appendChild(label);
-    if (p.type === "iframe") {
-      const iframe = document.createElement("iframe");
-      iframe.src = p.src;
-      panel.appendChild(iframe);
-    } else if (p.type === "img") {
-      const img = document.createElement("img");
-      img.src = p.src;
-      panel.appendChild(img);
     }
-  }
-  dashboard.appendChild(panel);
-});
+    setInterval(loadAlerts, 60000); // refresh every 60s
+    loadAlerts();
 
-// ---------------- TIME ----------------
-function updateTime() {
-  const now = new Date();
-  const zulu = now.toISOString().replace('T', ' ').split('.')[0] + " Z";
-  const estOptions = { timeZone: 'America/New_York', hour12: false };
-  const est = now.toLocaleString('en-US', estOptions);
-  document.getElementById('zulu-time').textContent = `Zulu Time: ${zulu}`;
-  document.getElementById('est-time').textContent = `EST: ${est}`;
-}
-setInterval(updateTime, 1000);
-updateTime();
+    // ====== CLOCKS ======
+    function updateClocks() {
+      const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+      const zulu = new Date().toUTCString();
 
-// ---------------- ALERT TICKER ----------------
-async function fetchAlerts() {
-  try {
-    const response = await fetch('https://api.weather.gov/alerts/active?area=NY');
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.features
-      .filter(f => /Fire|Red Flag|Smoke/i.test(f.properties.event))
-      .map(f => f.properties.headline);
-  } catch (e) {
-    return [];
-  }
-}
-async function updateAlerts() {
-  const alerts = await fetchAlerts();
-  const ticker = document.getElementById('alert-ticker');
-  ticker.innerHTML = alerts.length === 0
-    ? 'No current fire-related alerts'
-    : `<span>${alerts.join('  •  ')}</span>`;
-}
-setInterval(updateAlerts, 60 * 1000);
-updateAlerts();
-
-// ---------------- FULLSCREEN ----------------
-function enableFullscreen() {
-  const panels = document.querySelectorAll('.panel');
-  panels.forEach(panel => {
-    const label = panel.querySelector('.label');
-    label.addEventListener('click', e => {
-      e.stopPropagation();
-      panels.forEach(p => p.classList.remove('fullscreen'));
-      panel.classList.add('fullscreen');
-    });
-    panel.addEventListener('click', () => {
-      if(panel.classList.contains('fullscreen')){
-        panel.classList.remove('fullscreen');
-      }
-    });
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      panels.forEach(p => p.classList.remove('fullscreen'));
+      document.getElementById("estClock").textContent = est;
+      document.getElementById("zuluClock").textContent = zulu;
     }
-  });
-}
-enableFullscreen();
-</script>
+    setInterval(updateClocks, 1000);
+    updateClocks();
+  </script>
+
 </body>
 </html>
+
