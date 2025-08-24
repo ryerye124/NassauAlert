@@ -154,7 +154,7 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-  // ===== CLOCKS =====
+  // ===== CLOCKS (unchanged) =====
   function updateClocks() {
     const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
     const zulu = new Date().toISOString().substring(11,19) + "Z";
@@ -166,81 +166,136 @@
 
   // ===== ALERT MAP =====
   const map = L.map('alertMap').setView([40.7, -73.6], 10);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 
-  // Store markers with expiration
   const markersLayer = L.layerGroup().addTo(map);
-  const markerMap = {};
 
-  // ===== LOAD ALERTS FROM APPS SCRIPT =====
-  const ALERTS_URL = "https://script.google.com/macros/s/AKfycbx_sOoEcjFJuMWmgvTagenCwOKoI4MG0mfqQDLeOhi3qKHhLl8yzMyuA8h1FTH3E1tt/exec"; // replace with your web app URL
+  // ===== CONFIG =====
+  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycby-d7W1LJNtPG7FzR7QcIbS1O9TW3Td3HWTmOQ7S8rdK30-zIx9wSexxwnRKCPIGAM0/exec/exec?limit=60';
+  const POLL_MS = 20_000;
+  const TTL_MS  = 15 * 60 * 1000;
 
-  async function loadAlerts() {
-    try {
-      const res = await fetch(ALERTS_URL);
-      const data = await res.json();
-      const alerts = data.alerts || [];
+  // ===== STATE =====
+  // id -> { marker, expiresAt, tickerSpan }
+  const live = new Map();
 
-      // ----- Ticker -----
-      const ticker = document.getElementById("ticker");
-      if (alerts.length) {
-        ticker.textContent = alerts.map(a => a.subject).join(" • ");
-      } else {
-        ticker.textContent = "No new alerts at this time.";
+  // ===== HELPERS =====
+  const fmtTime = (v) => new Date(v).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  function colorFor(alert) {
+    const cat = (alert.category || '').toLowerCase();
+    const call = (alert.callType || '').toLowerCase();
+    if (cat.includes('fire') || call.includes('fire')) return 'red';
+    if (cat.includes('ems') || call.includes('ambulance')) return 'blue';
+    return 'yellow';
+  }
+
+  function makeTickerSpan(a, color) {
+    const span = document.createElement('span');
+    span.style.marginRight = '40px';
+    span.textContent = `${(a.category||'').toUpperCase()} • ${a.location || ''}${a.city ? ', ' + a.city : ''} • ${fmtTime(a.eventTimestamp)}`;
+    // add a colored dot
+    const dot = document.createElement('span');
+    dot.style.display = 'inline-block';
+    dot.style.width = '10px';
+    dot.style.height = '10px';
+    dot.style.borderRadius = '50%';
+    dot.style.background = color;
+    dot.style.marginRight = '8px';
+    const wrap = document.createElement('span');
+    wrap.appendChild(dot);
+    wrap.appendChild(span);
+    return wrap; // return wrapper with dot + text
+  }
+
+  function makeMarker(lat, lng, color, a) {
+    return L.circleMarker([lat, lng], {
+      radius: 8, color, weight: 2, fillColor: color, fillOpacity: 0.85
+    }).bindTooltip(
+      `${(a.category||'').toUpperCase()}<br>${a.location||''}${a.city ? ', ' + a.city : ''}<br>${fmtTime(a.eventTimestamp)}`,
+      {direction:'top', offset:[0,-8]}
+    ).addTo(markersLayer);
+  }
+
+  function cleanupExpired() {
+    const now = Date.now();
+    for (const [id, obj] of live) {
+      if (obj.expiresAt <= now) {
+        if (obj.marker && map.hasLayer(obj.marker)) map.removeLayer(obj.marker);
+        if (obj.tickerSpan && obj.tickerSpan.parentNode) obj.tickerSpan.parentNode.removeChild(obj.tickerSpan);
+        live.delete(id);
       }
-
-      const now = new Date().getTime();
-
-      // Remove expired markers
-      for (const key in markerMap) {
-        if (markerMap[key].expires <= now) {
-          markersLayer.removeLayer(markerMap[key].marker);
-          delete markerMap[key];
-        }
-      }
-
-      // Add new markers
-      for (const alert of alerts) {
-        if (!alert.address) continue;
-        const key = alert.subject + alert.address;
-        if (markerMap[key]) continue; // already exists
-
-        let color = 'yellow';
-        const type = (alert.type || '').toLowerCase();
-        if (type.includes('fire')) color = 'red';
-        else if (type.includes('ems') || type.includes('medical')) color = 'blue';
-
-        try {
-          const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(alert.address)}`);
-          const geoData = await geoRes.json();
-          if (geoData.length === 0) continue;
-
-          const { lat, lon } = geoData[0];
-          const marker = L.circleMarker([lat, lon], {
-            radius: 8,
-            fillColor: color,
-            color: '#000',
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.8
-          }).bindPopup(`<b>${alert.subject}</b><br>${alert.address}`).addTo(markersLayer);
-
-          // Store marker with 15-min expiration
-          const expires = new Date(alert.timestamp).getTime() + 15*60*1000;
-          markerMap[key] = { marker, expires };
-        } catch(err) { console.error("Geocode error:", err); }
-      }
-
-    } catch(err) {
-      console.error("Error loading alerts:", err);
-      document.getElementById("ticker").textContent = "Error loading alerts feed.";
     }
   }
 
-  setInterval(loadAlerts, 30000); // refresh every 30s
-  loadAlerts();
-</script>
+  // ===== FETCH + RENDER =====
+  async function fetchAlerts() {
+    const res = await fetch(ALERTS_URL, {cache: 'no-cache'});
+    const json = await res.json();
+    // Apps Script returns { count, results: [...] }
+    return (json.results || []).map(r => ({
+      id: r.uniqueKey || `${r.incidentId || ''}-${r.eventTimestamp || ''}`,
+      category: r.category,
+      callType: r.callType,
+      location: r.location,
+      city: r.city,
+      eventTimestamp: r.eventTimestamp,
+      lat: Number(r.lat),
+      lng: Number(r.lng)
+    })).filter(x => x.lat && x.lng && x.eventTimestamp);
+  }
 
-</body>
-</html>
+  async function tick() {
+    try {
+      const alerts = await fetchAlerts();
+      const tickerEl = document.getElementById('ticker');
+
+      // Ensure ticker keeps its scrolling animation by always having a long line
+      // Newest first
+      alerts.sort((a,b)=> new Date(b.eventTimestamp)-new Date(a.eventTimestamp));
+
+      const now = Date.now();
+
+      // Insert / refresh
+      for (const a of alerts) {
+        const id = a.id;
+        const expiresAt = new Date(a.eventTimestamp).getTime() + TTL_MS;
+
+        // Skip if already live and just refresh expiry
+        if (live.has(id)) {
+          live.get(id).expiresAt = Math.max(live.get(id).expiresAt, expiresAt);
+          continue;
+        }
+
+        const color = colorFor(a);
+
+        // Ticker
+        const chip = makeTickerSpan(a, color);
+        // Add to beginning so it shows early in the scroll
+        tickerEl.insertBefore(chip, tickerEl.firstChild);
+
+        // Map
+        const marker = makeMarker(a.lat, a.lng, color, a);
+
+        live.set(id, { marker, tickerSpan: chip, expiresAt: Math.max(now, expiresAt) });
+      }
+
+      // Cleanup expired from both map and ticker
+      cleanupExpired();
+
+      // If no items, show placeholder
+      if (live.size === 0) {
+        document.getElementById('ticker').textContent = 'No recent alerts.';
+      }
+
+    } catch (e) {
+      console.error('Alert fetch failed', e);
+      document.getElementById('ticker').textContent = 'Error loading alerts feed.';
+    }
+  }
+
+  tick(); // initial
+  setInterval(tick, POLL_MS);
+  setInterval(cleanupExpired, 10_000);
+</script>
