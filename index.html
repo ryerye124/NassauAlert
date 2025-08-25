@@ -138,6 +138,18 @@
   @media (max-width: 600px) {
     main { grid-template-columns: 1fr; grid-template-rows: repeat(5, 1fr); }
     .card { grid-column: span 1; }
+
+    /* Critical map icon */
+.leaflet-div-icon.crit-icon {
+  background: transparent;
+  border: none;
+}
+.crit-icon .glyph {
+  font-size: 24px;
+  line-height: 24px;
+  filter: drop-shadow(0 0 2px #000);
+}
+
   }
 </style>
 </head>
@@ -240,6 +252,15 @@
     { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
   const markersLayer = L.layerGroup().addTo(map);
 
+  // Critical alerts use a flame emoji marker
+const fireIcon = L.divIcon({
+  className: 'crit-icon leaflet-div-icon',
+  html: '<span class="glyph">🔥</span>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12]
+});
+
+
   /* ===== NORMAL FEED (ticker + map) ===== */
   const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbxtx8rg_JqLT-VjqUSSTfzHuN2Egg4ZsjH0s4xLVFzQlWaEn5AQOkIF4_UIeNvT3434/exec?limit=100';
   const POLL_MS = 20_000;
@@ -264,6 +285,14 @@
     wrap.append(dot, text);
     return wrap;
   }
+  function makeFireMarker(lat, lng, a) {
+  return L.marker([lat, lng], { icon: fireIcon })
+    .bindTooltip(
+      `${(a.category||'CRITICAL').toUpperCase()}<br>${a.location||''}${a.city? ', '+a.city:''}<br>${fmtTime(a.eventTimestamp)}`,
+      { direction: 'top', offset: [0, -8] }
+    )
+    .addTo(markersLayer);
+}
   function makeMarker(lat, lng, color, a) {
     return L.circleMarker([lat, lng], {
       radius: 8, color, weight: 2, fillColor: color, fillOpacity: 0.85
@@ -395,31 +424,40 @@
     return chip;
   }
 
-  function cleanupCritical() {
-    const now = Date.now();
-    for (const [id, obj] of critLive) {
-      if (obj.expiresAt <= now) {
-        obj.el?.remove();
-        critLive.delete(id);
-      }
+function cleanupCritical() {
+  const now = Date.now();
+  for (const [id, obj] of critLive) {
+    if (obj.expiresAt <= now) {
+      obj.el?.remove();
+      if (obj.marker && map.hasLayer(obj.marker)) map.removeLayer(obj.marker);
+      critLive.delete(id);
     }
+  }
+  if (critLive.size === 0) {
+    criticalBar.textContent = 'No critical alerts.';
+  }
+}
+
     if (critLive.size === 0) {
       criticalBar.textContent = 'No critical alerts.';
     }
   }
 
   async function fetchCriticalOnce() {
-    const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    const json = await res.json();
-    return (json.results || []).map(r => ({
-      id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
-      category: r.category,
-      location: r.location,
-      city: r.city,
-      eventTimestamp: r.eventTimestamp
-    })).filter(x => x.eventTimestamp);
-  }
+  const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP '+res.status);
+  const json = await res.json();
+  return (json.results || []).map(r => ({
+    id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
+    category: r.category,
+    location: r.location,
+    city: r.city,
+    eventTimestamp: r.eventTimestamp,
+    lat: r.lat != null ? Number(r.lat) : null,   // ✅ include coords
+    lng: r.lng != null ? Number(r.lng) : null
+  })).filter(x => x.eventTimestamp);
+}
+
 
   async function tickCritical() {
     try {
@@ -429,19 +467,26 @@
       let introduced = 0;
       const now = Date.now();
 
-      for (const a of items) {
-        const id = a.id;
-        const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
-        if (critLive.has(id)) {
-          critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
-          continue;
-        }
-        if (criticalBar.textContent === 'No critical alerts.') criticalBar.textContent = '';
-        const chip = makeCritChip(a);
-        criticalBar.insertBefore(chip, criticalBar.firstChild);
-        critLive.set(id, { el: chip, expiresAt: exp });
-        introduced++;
-      }
+     for (const a of items) {
+  const id = a.id;
+  const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
+  if (critLive.has(id)) {
+    critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
+    continue;
+  }
+  if (criticalBar.textContent === 'No critical alerts.') criticalBar.textContent = '';
+
+  const chip = makeCritChip(a);
+  criticalBar.insertBefore(chip, criticalBar.firstChild);
+
+  let marker = null;
+  if (typeof a.lat === 'number' && typeof a.lng === 'number' && isFinite(a.lat) && isFinite(a.lng)) {
+    marker = makeFireMarker(a.lat, a.lng, a);     // 🔥 drop fire pin
+  }
+
+  critLive.set(id, { el: chip, marker, expiresAt: exp });
+  introduced++;
+}
 
       if (introduced > 0) {
         criticalBar.classList.remove('flash-twice');
