@@ -42,7 +42,7 @@
   .critical {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: center;   /* centered */
     gap: 18px;
     padding: 0 12px;
     color: #fff;
@@ -129,6 +129,19 @@
   }
   footer a { color: #ffcc00; text-decoration: none; }
 
+  /* Critical map icon */
+.leaflet-div-icon.crit-icon {
+  background: transparent;
+  border: none;
+}
+.crit-icon svg {
+  width: 28px;
+  height: 34px;
+  display: block;
+  filter: drop-shadow(0 0 2px #000);
+}
+
+
   /* RESPONSIVE */
   @media (max-width: 1024px) {
     main { grid-template-columns: repeat(2, 1fr); grid-template-rows: 2fr 1fr 1fr; }
@@ -138,18 +151,6 @@
   @media (max-width: 600px) {
     main { grid-template-columns: 1fr; grid-template-rows: repeat(5, 1fr); }
     .card { grid-column: span 1; }
-
-    /* Critical map icon */
-.leaflet-div-icon.crit-icon {
-  background: transparent;
-  border: none;
-}
-.crit-icon .glyph {
-  font-size: 24px;
-  line-height: 24px;
-  filter: drop-shadow(0 0 2px #000);
-}
-
   }
 </style>
 </head>
@@ -162,7 +163,7 @@
 </header>
 
 <div class="critical-wrap">
-  <div class="critical" id="criticalBar">No critical alerts</div>
+  <div class="critical" id="criticalBar">No critical alerts.</div>
 </div>
 
 <div class="ticker-wrap">
@@ -217,16 +218,15 @@
     return Number.isNaN(t) ? Date.parse(cleaned) : t;
   }
   const fmtTime = (v) => {
-  const ms = typeof v === 'number' ? v : parseTs(v);
-  return Number.isNaN(ms)
-    ? '—'
-    : new Date(ms).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false   //  24-hour format
-      });
-};
-
+    const ms = typeof v === 'number' ? v : parseTs(v);
+    return Number.isNaN(ms)
+      ? '—'
+      : new Date(ms).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false   // 24-hour format
+        });
+  };
   function cacheBusted(url) {
     const sep = url.includes('?') ? '&' : '?';
     return `${url}${sep}_cb=${Date.now()}`;
@@ -234,15 +234,14 @@
 
   /* ===== CLOCKS ===== */
   function updateClocks() {
-  const est = new Date().toLocaleString("en-US", {
-    timeZone: "America/New_York",
-    hour12: false   //  24-hour
-  });
-  const zulu = new Date().toISOString().substring(11,19) + "Z";
-  document.getElementById("est-time").textContent = "EST: " + est;
-  document.getElementById("zulu-time").textContent = "Zulu: " + zulu;
-}
-
+    const est = new Date().toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      hour12: false   // 24-hour
+    });
+    const zulu = new Date().toISOString().substring(11,19) + "Z";
+    document.getElementById("est-time").textContent = "EST: " + est;
+    document.getElementById("zulu-time").textContent = "Zulu: " + zulu;
+  }
   setInterval(updateClocks, 1000);
   updateClocks();
 
@@ -252,12 +251,41 @@
     { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
   const markersLayer = L.layerGroup().addTo(map);
 
-  // Critical alerts use a flame emoji marker
+ // Critical alerts use a crisp SVG flame marker
 const fireIcon = L.divIcon({
   className: 'crit-icon leaflet-div-icon',
-  html: '<span class="glyph">🔥</span>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12]
+  html: `
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FFA726"/>
+          <stop offset="60%" stop-color="#FB8C00"/>
+          <stop offset="100%" stop-color="#E53935"/>
+        </linearGradient>
+      </defs>
+      <!-- Outer flame -->
+      <path fill="url(#flameGrad)" d="
+        M32 4
+        c 8 10 -4 16 -4 26
+        c 0 8 8 12 8 20
+        c 0 8 -6 14 -14 14
+        c -10 0 -18 -8 -18 -20
+        c 0 -12 10 -18 16 -26
+        c 6 -8 4 -12 12 -14
+        z"/>
+      <!-- Inner flame -->
+      <path fill="#FFE082" d="
+        M26 40
+        c 4 4 2 8 0 10
+        c -2 2 -6 2 -8 -2
+        c -2 -4 2 -8 8 -8
+        z"/>
+      <!-- Spark -->
+      <circle cx="41" cy="15" r="3" fill="#FFCC80"/>
+    </svg>
+  `,
+  iconSize: [28, 34],
+  iconAnchor: [14, 17]
 });
 
 
@@ -285,14 +313,6 @@ const fireIcon = L.divIcon({
     wrap.append(dot, text);
     return wrap;
   }
-  function makeFireMarker(lat, lng, a) {
-  return L.marker([lat, lng], { icon: fireIcon })
-    .bindTooltip(
-      `${(a.category||'CRITICAL').toUpperCase()}<br>${a.location||''}${a.city? ', '+a.city:''}<br>${fmtTime(a.eventTimestamp)}`,
-      { direction: 'top', offset: [0, -8] }
-    )
-    .addTo(markersLayer);
-}
   function makeMarker(lat, lng, color, a) {
     return L.circleMarker([lat, lng], {
       radius: 8, color, weight: 2, fillColor: color, fillOpacity: 0.85
@@ -300,6 +320,14 @@ const fireIcon = L.divIcon({
       `${(a.category||'').toUpperCase()}<br>${a.location||''}${a.city? ', '+a.city:''}<br>${fmtTime(a.eventTimestamp)}`,
       {direction:'top', offset:[0,-8]}
     ).addTo(markersLayer);
+  }
+  function makeFireMarker(lat, lng, a) {
+    return L.marker([lat, lng], { icon: fireIcon })
+      .bindTooltip(
+        `${(a.category||'CRITICAL').toUpperCase()}<br>${a.location||''}${a.city? ', '+a.city:''}<br>${fmtTime(a.eventTimestamp)}`,
+        { direction: 'top', offset: [0, -8] }
+      )
+      .addTo(markersLayer);
   }
   function cleanupExpired() {
     const now = Date.now();
@@ -386,7 +414,7 @@ const fireIcon = L.divIcon({
     else stopPolling();
   });
 
-  /* ===== CRITICAL FEED (title bar with beep/flash) ===== */
+  /* ===== CRITICAL FEED (title bar with beep/flash + fire pins) ===== */
   const CRIT_URL = 'https://script.google.com/macros/s/AKfycbxtx8rg_JqLT-VjqUSSTfzHuN2Egg4ZsjH0s4xLVFzQlWaEn5AQOkIF4_UIeNvT3434/exec?channel=critical&limit=40';
 
   function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
@@ -411,7 +439,7 @@ const fireIcon = L.divIcon({
   }
 
   const criticalBar = document.getElementById('criticalBar');
-  const critLive = new Map(); // id -> { expiresAt, el }
+  const critLive = new Map(); // id -> { el, marker, expiresAt }
 
   function makeCritChip(a) {
     const dot = document.createElement('span');
@@ -424,40 +452,34 @@ const fireIcon = L.divIcon({
     return chip;
   }
 
-function cleanupCritical() {
-  const now = Date.now();
-  for (const [id, obj] of critLive) {
-    if (obj.expiresAt <= now) {
-      obj.el?.remove();
-      if (obj.marker && map.hasLayer(obj.marker)) map.removeLayer(obj.marker);
-      critLive.delete(id);
+  function cleanupCritical() {
+    const now = Date.now();
+    for (const [id, obj] of critLive) {
+      if (obj.expiresAt <= now) {
+        obj.el?.remove();
+        if (obj.marker && map.hasLayer(obj.marker)) map.removeLayer(obj.marker);
+        critLive.delete(id);
+      }
     }
-  }
-  if (critLive.size === 0) {
-    criticalBar.textContent = 'No critical alerts.';
-  }
-}
-
     if (critLive.size === 0) {
       criticalBar.textContent = 'No critical alerts.';
     }
   }
 
   async function fetchCriticalOnce() {
-  const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
-  if (!res.ok) throw new Error('HTTP '+res.status);
-  const json = await res.json();
-  return (json.results || []).map(r => ({
-    id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
-    category: r.category,
-    location: r.location,
-    city: r.city,
-    eventTimestamp: r.eventTimestamp,
-    lat: r.lat != null ? Number(r.lat) : null,   // ✅ include coords
-    lng: r.lng != null ? Number(r.lng) : null
-  })).filter(x => x.eventTimestamp);
-}
-
+    const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    return (json.results || []).map(r => ({
+      id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
+      category: r.category,
+      location: r.location,
+      city: r.city,
+      eventTimestamp: r.eventTimestamp,
+      lat: r.lat != null ? Number(r.lat) : null,
+      lng: r.lng != null ? Number(r.lng) : null
+    })).filter(x => x.eventTimestamp);
+  }
 
   async function tickCritical() {
     try {
@@ -467,26 +489,26 @@ function cleanupCritical() {
       let introduced = 0;
       const now = Date.now();
 
-     for (const a of items) {
-  const id = a.id;
-  const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
-  if (critLive.has(id)) {
-    critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
-    continue;
-  }
-  if (criticalBar.textContent === 'No critical alerts.') criticalBar.textContent = '';
+      for (const a of items) {
+        const id = a.id;
+        const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
+        if (critLive.has(id)) {
+          critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
+          continue;
+        }
+        if (criticalBar.textContent === 'No critical alerts.') criticalBar.textContent = '';
 
-  const chip = makeCritChip(a);
-  criticalBar.insertBefore(chip, criticalBar.firstChild);
+        const chip = makeCritChip(a);
+        criticalBar.insertBefore(chip, criticalBar.firstChild);
 
-  let marker = null;
-  if (typeof a.lat === 'number' && typeof a.lng === 'number' && isFinite(a.lat) && isFinite(a.lng)) {
-    marker = makeFireMarker(a.lat, a.lng, a);     // 🔥 drop fire pin
-  }
+        let marker = null;
+        if (typeof a.lat === 'number' && typeof a.lng === 'number' && isFinite(a.lat) && isFinite(a.lng)) {
+          marker = makeFireMarker(a.lat, a.lng, a);     // 🔥 drop fire pin
+        }
 
-  critLive.set(id, { el: chip, marker, expiresAt: exp });
-  introduced++;
-}
+        critLive.set(id, { el: chip, marker, expiresAt: exp });
+        introduced++;
+      }
 
       if (introduced > 0) {
         criticalBar.classList.remove('flash-twice');
@@ -512,4 +534,3 @@ function cleanupCritical() {
 </script>
 </body>
 </html>
-
