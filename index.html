@@ -29,64 +29,60 @@
   }
   header div { min-width: 150px; text-align: center; }
 
+  /* CRITICAL BAR (between header and ticker) */
+  .critical-wrap {
+    overflow: hidden;
+    background: #4a0000; /* dark red base */
+    height: 30px;
+    position: sticky;
+    top: 50px; /* header ~50px */
+    z-index: 9999;
+    border-bottom: 1px solid #660000;
+  }
+  .critical {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 12px;
+    color: #fff;
+    line-height: 30px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+  .critical .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #220000;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid #660000;
+  }
+  @keyframes critFlash {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(2.2); }
+    100% { filter: brightness(1); }
+  }
+  .critical.flash-twice { animation: critFlash 0.6s ease-in-out 2; }
+
   /* TICKER */
   .ticker-wrap {
     overflow: hidden;
     background: #333;
     height: 30px;
     position: sticky;
-    top: 80px;
+    top: 80px; /* header 50 + critical 30 */
     z-index: 999;
   }
   .ticker {
     display: inline-block;
     white-space: nowrap;
     padding-left: 100%;
-    animation: scroll 45s linear infinite;
+    animation: scroll 45s linear infinite; /* slower crawl */
     color: #ffcc00;
     line-height: 30px;
   }
   @keyframes scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
-
-  .critical-wrap {
-  overflow: hidden;
-  background: #4a0000; /* dark red base */
-  height: 30px;
-  position: sticky;
-  top: 50px; /* header is ~50px; this pushes regular ticker down by +30px */
-  z-index: 9999;
-  border-bottom: 1px solid #660000;
-}
-.critical {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 0 12px;
-  color: #fff;
-  line-height: 30px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-.critical .chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #220000;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid #660000;
-}
-
-/* Flash animation: 2 flashes @ 600ms each */
-@keyframes critFlash {
-  0% { filter: brightness(1); }
-  50% { filter: brightness(2.2); }
-  100% { filter: brightness(1); }
-}
-.critical.flash-twice {
-  animation: critFlash 0.6s ease-in-out 2;
-}
-
 
   /* MAIN GRID */
   main {
@@ -96,7 +92,7 @@
     grid-template-rows: 2fr 1fr;
     gap: 10px;
     padding: 10px;
-    height: calc(100vh - 100px); /* header + ticker */
+    height: calc(100vh - 100px);
   }
 
   .card {
@@ -114,7 +110,6 @@
 
   iframe { width: 100%; height: 100%; border: none; }
 
-  /* Nested grid for radios under Radar */
   .radio-container {
     display: grid;
     grid-template-rows: 1fr 1fr;
@@ -153,7 +148,7 @@
   <div id="zulu-time">Zulu: --:--:--</div>
 </header>
 
-  <div class="critical-wrap">
+<div class="critical-wrap">
   <div class="critical" id="criticalBar">No critical alerts.</div>
 </div>
 
@@ -162,7 +157,6 @@
 </div>
 
 <main>
-  <!-- Top row: 3 equal maps -->
   <div class="card">
     <h2>Radar (NWS)</h2>
     <iframe src="https://radar.weather.gov/region/northeast/standard"></iframe>
@@ -176,7 +170,6 @@
     <iframe src="https://www.mapofire.com/state/new-york"></iframe>
   </div>
 
-  <!-- Bottom row: radios under Radar, alert map -->
   <div class="card radio-container">
     <h2>Live Radio Feeds</h2>
     <iframe src="http://live.monitorlongisland.com/ncfd-east"></iframe>
@@ -198,162 +191,9 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-  /* === existing code above stays === */
+  /* ===== GLOBAL CONFIG & HELPERS (shared by both tickers) ===== */
+  const TTL_MS = 15 * 60 * 1000;   // keep items for 15 minutes
 
-  /* === NEW: critical feed config === */
-  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbz0KpL0Drp-qT6s9h7YshCbY_dwjOgLD7myohbWt8VPHFeDGxTcgP4JYFFK8gPQwJp7/exec/exec?channel=critical&limit=40';
-
-  /* === NEW: simple WebAudio beep (440Hz) === */
-  function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      let when = ctx.currentTime;
-      for (let i = 0; i < times; i++) {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.001, when);
-        gain.gain.exponentialRampToValueAtTime(0.3, when + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.001, when + durationMs/1000);
-
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(when);
-        osc.stop(when + durationMs/1000);
-
-        when += (durationMs + gapMs)/1000;
-      }
-      // auto-close to release audio context
-      setTimeout(() => ctx.close(), (times*(durationMs+gapMs))+200);
-    } catch {}
-  }
-
-  /* === NEW: state for critical bar === */
-  const criticalBar = document.getElementById('criticalBar');
-  const critLive = new Map(); // id -> { expiresAt, el }
-
-  function makeCritChip(a) {
-    const dot = document.createElement('span');
-    dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
-    const txt = document.createElement('span');
-    txt.textContent = `${(a.category||'CRITICAL').toUpperCase()} • ${a.location||''}${a.city? ', '+a.city:''} • ${fmtTime(a.eventTimestamp)}`;
-    const chip = document.createElement('span');
-    chip.className = 'chip';
-    chip.append(dot, txt);
-    return chip;
-  }
-
-  function cleanupCritical() {
-    const now = Date.now();
-    for (const [id, obj] of critLive) {
-      if (obj.expiresAt <= now) {
-        obj.el?.remove();
-        critLive.delete(id);
-      }
-    }
-    if (critLive.size === 0) {
-      criticalBar.textContent = 'No critical alerts.';
-    }
-  }
-
-  function cacheBusted(url) {
-    const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}_cb=${Date.now()}`;
-  }
-
-  async function fetchCriticalOnce() {
-    const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    const json = await res.json();
-    return (json.results || []).map(r => ({
-      id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
-      category: r.category,
-      location: r.location,
-      city: r.city,
-      eventTimestamp: r.eventTimestamp
-    })).filter(x => x.eventTimestamp);
-  }
-
-  async function tickCritical() {
-    try {
-      const items = await fetchCriticalOnce();
-      items.sort((a,b) => parseTs(b.eventTimestamp) - parseTs(a.eventTimestamp));
-
-      // If there are new ones, we’ll flash + beep once per batch
-      let introduced = 0;
-      const now = Date.now();
-
-      // Show newest first (prepend)
-      for (const a of items) {
-        const id = a.id;
-        const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
-        if (critLive.has(id)) {
-          critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
-          continue;
-        }
-        // remove placeholder text if present
-        if (criticalBar.textContent === 'No critical alerts.') {
-          criticalBar.textContent = '';
-        }
-        const chip = makeCritChip(a);
-        criticalBar.insertBefore(chip, criticalBar.firstChild);
-        critLive.set(id, { el: chip, expiresAt: exp });
-        introduced++;
-      }
-
-      if (introduced > 0) {
-        // Flash the entire bar twice, then it stays static
-        criticalBar.classList.remove('flash-twice'); // reset if still on
-        void criticalBar.offsetWidth; // reflow to restart animation
-        criticalBar.classList.add('flash-twice');
-
-        // Double beep
-        beep(2, 140, 120, 988);
-
-        // After animation ends, ensure class is removed so it’s static
-        criticalBar.addEventListener('animationend', () => {
-          criticalBar.classList.remove('flash-twice');
-        }, { once: true });
-      }
-
-      cleanupCritical();
-    } catch (e) {
-      console.error('Critical fetch failed:', e);
-    }
-  }
-
-  // Start a separate poller (can be a bit faster than the normal ticker if you want)
-  setInterval(tickCritical, 15000); // every 15s
-  tickCritical();
-
-  /* === existing normal ticker/map code below stays as you have it === */
-
-  // ===== CLOCKS =====
-  function updateClocks() {
-    const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
-    const zulu = new Date().toISOString().substring(11,19) + "Z";
-    document.getElementById("est-time").textContent = "EST: " + est;
-    document.getElementById("zulu-time").textContent = "Zulu: " + zulu;
-  }
-  setInterval(updateClocks, 1000);
-  updateClocks();
-
-  // ===== MAP =====
-  const map = L.map('alertMap').setView([40.7, -73.6], 10);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-  const markersLayer = L.layerGroup().addTo(map);
-
-  // ===== CONFIG =====
-  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbz0KpL0Drp-qT6s9h7YshCbY_dwjOgLD7myohbWt8VPHFeDGxTcgP4JYFFK8gPQwJp7/exec?limit=100';
-  const POLL_MS = 20_000;
-  const TTL_MS  = 15 * 60 * 1000;
-
-  // ===== STATE =====
-  const live = new Map(); // id -> { marker, expiresAt, tickerSpan }
-  const tickerEl = document.getElementById('ticker');
-
-  // ===== UTILS =====
   function parseTs(s) {
     if (!s) return NaN;
     const cleaned = String(s).trim().replace(/(\.\d{3})\d+$/, '$1');
@@ -367,6 +207,33 @@
     const ms = typeof v === 'number' ? v : parseTs(v);
     return Number.isNaN(ms) ? '—' : new Date(ms).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   };
+  function cacheBusted(url) {
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}_cb=${Date.now()}`;
+  }
+
+  /* ===== CLOCKS ===== */
+  function updateClocks() {
+    const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+    const zulu = new Date().toISOString().substring(11,19) + "Z";
+    document.getElementById("est-time").textContent = "EST: " + est;
+    document.getElementById("zulu-time").textContent = "Zulu: " + zulu;
+  }
+  setInterval(updateClocks, 1000);
+  updateClocks();
+
+  /* ===== MAP ===== */
+  const map = L.map('alertMap').setView([40.7, -73.6], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  const markersLayer = L.layerGroup().addTo(map);
+
+  /* ===== NORMAL FEED (ticker + map) ===== */
+  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbz0KpL0Drp-qT6s9h7YshCbY_dwjOgLD7myohbWt8VPHFeDGxTcgP4JYFFK8gPQwJp7/exec?limit=100';
+  const POLL_MS = 20_000;
+
+  const live = new Map(); // id -> { marker, expiresAt, tickerSpan }
+  const tickerEl = document.getElementById('ticker');
 
   function colorFor(a) {
     const cat = (a.category||'').toLowerCase();
@@ -407,10 +274,6 @@
       tickerEl.dataset.placeholderShown = '1';
     }
   }
-  function cacheBusted(url) {
-    const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}_cb=${Date.now()}`;
-  }
 
   async function fetchAlertsOnce() {
     const res = await fetch(cacheBusted(ALERTS_URL), { cache: 'no-store' });
@@ -444,7 +307,7 @@
         const id = a.id;
         const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
 
-        // ✅ de-dup: if already present, just refresh expiry
+        // de-dup / refresh
         if (live.has(id)) {
           live.get(id).expiresAt = Math.max(live.get(id).expiresAt, exp);
           continue;
@@ -462,7 +325,6 @@
         live.set(id, { marker, tickerSpan: chip, expiresAt: exp });
       }
 
-      // ✅ run once per tick, not inside the loop
       cleanupExpired();
       console.debug('BRYX tick', new Date().toLocaleTimeString(), `alerts now=${live.size}`);
     } catch (err) {
@@ -483,6 +345,114 @@
     else stopPolling();
   });
 
-  startPolling();
+  /* ===== CRITICAL FEED (title bar with beep/flash) ===== */
+  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbz0KpL0Drp-qT6s9h7YshCbY_dwjOgLD7myohbWt8VPHFeDGxTcgP4JYFFK8gPQwJp7/exec?channel=critical&limit=40';
+
+  function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      let when = ctx.currentTime;
+      for (let i = 0; i < times; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.001, when);
+        gain.gain.exponentialRampToValueAtTime(0.3, when + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, when + durationMs/1000);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(when);
+        osc.stop(when + durationMs/1000);
+        when += (durationMs + gapMs)/1000;
+      }
+      setTimeout(() => ctx.close(), (times*(durationMs+gapMs))+200);
+    } catch {}
+  }
+
+  const criticalBar = document.getElementById('criticalBar');
+  const critLive = new Map(); // id -> { expiresAt, el }
+
+  function makeCritChip(a) {
+    const dot = document.createElement('span');
+    dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
+    const txt = document.createElement('span');
+    txt.textContent = `${(a.category||'CRITICAL').toUpperCase()} • ${a.location||''}${a.city? ', '+a.city:''} • ${fmtTime(a.eventTimestamp)}`;
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.append(dot, txt);
+    return chip;
+  }
+
+  function cleanupCritical() {
+    const now = Date.now();
+    for (const [id, obj] of critLive) {
+      if (obj.expiresAt <= now) {
+        obj.el?.remove();
+        critLive.delete(id);
+      }
+    }
+    if (critLive.size === 0) {
+      criticalBar.textContent = 'No critical alerts.';
+    }
+  }
+
+  async function fetchCriticalOnce() {
+    const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    return (json.results || []).map(r => ({
+      id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
+      category: r.category,
+      location: r.location,
+      city: r.city,
+      eventTimestamp: r.eventTimestamp
+    })).filter(x => x.eventTimestamp);
+  }
+
+  async function tickCritical() {
+    try {
+      const items = await fetchCriticalOnce();
+      items.sort((a,b) => parseTs(b.eventTimestamp) - parseTs(a.eventTimestamp));
+
+      let introduced = 0;
+      const now = Date.now();
+
+      for (const a of items) {
+        const id = a.id;
+        const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
+        if (critLive.has(id)) {
+          critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
+          continue;
+        }
+        if (criticalBar.textContent === 'No critical alerts.') criticalBar.textContent = '';
+        const chip = makeCritChip(a);
+        criticalBar.insertBefore(chip, criticalBar.firstChild);
+        critLive.set(id, { el: chip, expiresAt: exp });
+        introduced++;
+      }
+
+      if (introduced > 0) {
+        criticalBar.classList.remove('flash-twice');
+        void criticalBar.offsetWidth; // restart animation
+        criticalBar.classList.add('flash-twice');
+        beep(2, 140, 120, 988);
+        criticalBar.addEventListener('animationend', () => {
+          criticalBar.classList.remove('flash-twice');
+        }, { once: true });
+      }
+
+      cleanupCritical();
+    } catch (e) {
+      console.error('Critical fetch failed:', e);
+    }
+  }
+
+  /* ===== Start both pollers ===== */
+  startPolling();                    // normal feed
+  setInterval(tickCritical, 15000);  // critical feed every 15s
+  tickCritical();
+
 </script>
+</body>
+</html>
 
