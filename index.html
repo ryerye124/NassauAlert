@@ -42,7 +42,7 @@
   .critical {
     display: flex;
     align-items: center;
-    justify-content: center;   /* centered */
+    justify-content: center;
     gap: 18px;
     padding: 0 12px;
     color: #fff;
@@ -79,7 +79,7 @@
     display: inline-block;
     white-space: nowrap;
     padding-left: 100%;
-    animation: scroll 45s linear infinite; /* slower crawl */
+    animation: scroll 45s linear infinite;
     color: #ffcc00;
     line-height: 30px;
   }
@@ -254,24 +254,8 @@
             <stop offset="100%" stop-color="#E53935"/>
           </linearGradient>
         </defs>
-        <!-- Outer flame -->
-        <path fill="url(#flameGrad)" d="
-          M32 4
-          c 8 10 -4 16 -4 26
-          c 0 8 8 12 8 20
-          c 0 8 -6 14 -14 14
-          c -10 0 -18 -8 -18 -20
-          c 0 -12 10 -18 16 -26
-          c 6 -8 4 -12 12 -14
-          z"/>
-        <!-- Inner flame -->
-        <path fill="#FFE082" d="
-          M26 40
-          c 4 4 2 8 0 10
-          c -2 2 -6 2 -8 -2
-          c -2 -4 2 -8 8 -8
-          z"/>
-        <!-- Spark -->
+        <path fill="url(#flameGrad)" d="M32 4c8 10-4 16-4 26 0 8 8 12 8 20 0 8-6 14-14 14-10 0-18-8-18-20 0-12 10-18 16-26 6-8 4-12 12-14z"/>
+        <path fill="#FFE082" d="M26 40c4 4 2 8 0 10-2 2-6 2-8-2-2-4 2-8 8-8z"/>
         <circle cx="41" cy="15" r="3" fill="#FFCC80"/>
       </svg>
     `,
@@ -280,7 +264,7 @@
   });
 
   /* ===== NORMAL FEED (ticker + map) ===== */
-  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbyslIj5Bneb4-KtdhsBZyctHZ4zfVbMqUUXS_ARh2y33b7V8R9ILbZywvSRT1zKB0mQ/exec?limit=100';
+  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbwjKKxg6mqOkjyZnUq2p4g2osIpTUlPKjlUg4RXFpj2W6u48sLnxjUlf7nN9ws394Zp/exec?limit=100';
   const POLL_MS = 20000;
 
   const live = new Map(); // id -> { marker, expiresAt, tickerSpan }
@@ -365,7 +349,7 @@
       for (const a of alerts) {
         const id = a.id;
         const tsMs = parseTs(a.eventTimestamp);
-        const exp = Math.max(now, (Number.isNaN(tsMs) ? now : tsMs) + TTL_MS); /* safety */
+        const exp = Math.max(now, (Number.isNaN(tsMs) ? now : tsMs) + TTL_MS);
 
         if (live.has(id)) {
           live.get(id).expiresAt = Math.max(live.get(id).expiresAt, exp);
@@ -382,10 +366,15 @@
         }
 
         live.set(id, { marker, tickerSpan: chip, expiresAt: exp });
+
+        // NEW: geocode if missing coords
+        if (marker == null) {
+          maybeGeocodeAndDropPin_Normal(a, id);
+        }
       }
 
       cleanupExpired();
-      console.debug('BRYX tick', new Date().toLocaleTimeString(), `alerts now=${live.size}`);
+      // console.debug('BRYX tick', new Date().toLocaleTimeString(), `alerts now=${live.size}`);
     } catch (err) {
       console.error('BRYX fetch failed:', err);
     }
@@ -405,7 +394,7 @@
   });
 
   /* ===== CRITICAL FEED (title bar with beep/flash + fire pins) ===== */
-  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbyslIj5Bneb4-KtdhsBZyctHZ4zfVbMqUUXS_ARh2y33b7V8R9ILbZywvSRT1zKB0mQ/exec?channel=critical&limit=40';
+  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbwjKKxg6mqOkjyZnUq2p4g2osIpTUlPKjlUg4RXFpj2W6u48sLnxjUlf7nN9ws394Zp/exec?channel=critical&limit=40';
 
   function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
     try {
@@ -482,7 +471,7 @@
       for (const a of items) {
         const id = a.id;
         const tsMs = parseTs(a.eventTimestamp);
-        const exp = Math.max(now, (Number.isNaN(tsMs) ? now : tsMs) + TTL_MS); /* safety */
+        const exp = Math.max(now, (Number.isNaN(tsMs) ? now : tsMs) + TTL_MS);
         if (critLive.has(id)) {
           critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
           continue;
@@ -494,10 +483,16 @@
 
         let marker = null;
         if (typeof a.lat === 'number' && typeof a.lng === 'number' && isFinite(a.lat) && isFinite(a.lng)) {
-          marker = makeFireMarker(a.lat, a.lng, a);     // 🔥 drop fire pin
+          marker = makeFireMarker(a.lat, a.lng, a);
         }
 
         critLive.set(id, { el: chip, marker, expiresAt: exp });
+
+        // NEW: geocode if missing coords
+        if (marker == null) {
+          maybeGeocodeAndDropPin_Critical(a, id);
+        }
+
         introduced++;
       }
 
@@ -517,11 +512,134 @@
     }
   }
 
-  /* ===== Start both pollers ===== */
-  startPolling();                    // normal feed
-  setInterval(tickCritical, 15000);  // critical feed every 15s
-  tickCritical();
+  /* ===== Geocoding: config, cache, queue, and helpers ===== */
 
+  // Geocoder config (Nominatim)
+  const GEOCODE_RATE_MS = 1200;                     // ~1 req/sec
+  const GEOCODE_TTL_MS  = 7 * 24 * 60 * 60 * 1000;  // cache 7 days
+  const GEOCODE_BOUNDS  = {                         // Nassau County-ish box
+    minLon: -73.90, minLat: 40.50, maxLon: -73.40, maxLat: 40.90
+  };
+
+  // localStorage cache
+  const geoCache = {
+    get(key) {
+      try {
+        const raw = localStorage.getItem('geo_'+key);
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || (obj.t && (Date.now()-obj.t) > GEOCODE_TTL_MS)) return null;
+        return obj;
+      } catch { return null; }
+    },
+    set(key, lat, lng) {
+      try {
+        localStorage.setItem('geo_'+key, JSON.stringify({lat,lng,t:Date.now()}));
+      } catch {}
+    }
+  };
+
+  // rate-limited queue
+  const geocodeQueue = []; // items: { key, query, onResult }
+  let geocodeTimer = null;
+
+  function enqueueGeocode(key, query, onResult) {
+    if (geocodeQueue.find(q => q.key === key)) return; // de-dupe pending
+    geocodeQueue.push({ key, query, onResult });
+    if (!geocodeTimer) geocodeTimer = setInterval(processGeocodeQueue, GEOCODE_RATE_MS);
+  }
+
+  async function processGeocodeQueue() {
+    if (!geocodeQueue.length) {
+      clearInterval(geocodeTimer);
+      geocodeTimer = null;
+      return;
+    }
+    const job = geocodeQueue.shift();
+    try {
+      const { key, query, onResult } = job;
+
+      const cached = geoCache.get(key);
+      if (cached && isFinite(cached.lat) && isFinite(cached.lng)) {
+        onResult(cached.lat, cached.lng);
+        return;
+      }
+
+      const url = new URL('https://nominatim.openstreetmap.org/search');
+      url.searchParams.set('format', 'json');
+      url.searchParams.set('q', query);
+      url.searchParams.set('countrycodes', 'us');
+      url.searchParams.set('addressdetails', '0');
+      url.searchParams.set('limit', '1');
+      url.searchParams.set('viewbox', `${GEOCODE_BOUNDS.minLon},${GEOCODE_BOUNDS.maxLat},${GEOCODE_BOUNDS.maxLon},${GEOCODE_BOUNDS.minLat}`);
+      url.searchParams.set('bounded', '1');
+      url.searchParams.set('accept-language', 'en');
+
+      const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' }});
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      const arr = await res.json();
+      if (Array.isArray(arr) && arr.length) {
+        const lat = Number(arr[0].lat), lng = Number(arr[0].lon);
+        if (isFinite(lat) && isFinite(lng)) {
+          geoCache.set(key, lat, lng);
+          onResult(lat, lng);
+          return;
+        }
+      }
+      onResult(null, null);
+    } catch (e) {
+      console.warn('Geocode failed:', e);
+      job.onResult(null, null);
+    }
+  }
+
+  // attach geocoded marker for normal feed
+  function maybeGeocodeAndDropPin_Normal(a, id) {
+    if (typeof a.lat === 'number' && typeof a.lng === 'number') return;
+    const entry = live.get(id);
+    if (!entry) return;
+    if ((entry.expiresAt - Date.now()) < 30000) return;
+
+    const addr = `${a.location || ''}${a.city ? ', '+a.city : ''}, NY`.trim();
+    if (!addr || addr === ', NY') return;
+
+    const cacheKey = addr.toLowerCase();
+    enqueueGeocode(cacheKey, addr, (lat, lng) => {
+      if (lat == null || lng == null) return;
+      const curr = live.get(id);
+      if (!curr || curr.expiresAt <= Date.now()) return;
+      const color = colorFor(a);
+      const marker = makeMarker(lat, lng, color, a);
+      curr.marker = marker;
+    });
+  }
+
+  // attach geocoded marker for critical feed
+  function maybeGeocodeAndDropPin_Critical(a, id) {
+    const entry = critLive.get(id);
+    if (!entry) return;
+    if ((entry.expiresAt - Date.now()) < 30000) return;
+
+    const addr = `${a.location || ''}${a.city ? ', '+a.city : ''}, NY`.trim();
+    if (!addr || addr === ', NY') return;
+
+    const cacheKey = 'crit:'+addr.toLowerCase();
+    enqueueGeocode(cacheKey, addr, (lat, lng) => {
+      if (lat == null || lng == null) return;
+      const curr = critLive.get(id);
+      if (!curr || curr.expiresAt <= Date.now()) return;
+      const marker = makeFireMarker(lat, lng, a);
+      curr.marker = marker;
+    });
+  }
+
+  /* ===== Start both pollers ===== */
+  function init() {
+    startPolling();                   // normal feed
+    setInterval(tickCritical, 15000); // critical feed every 15s
+    tickCritical();
+  }
+  init();
 </script>
 </body>
 </html>
