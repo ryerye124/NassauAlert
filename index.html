@@ -57,6 +57,18 @@
     main { grid-template-columns: 1fr; grid-template-rows: repeat(5, 1fr); }
     .card { grid-column: span 1; }
   }
+  /* Make map card a column so the map fills under the title */
+.card { display: flex; flex-direction: column; }
+
+.card h2 { flex: 0 0 auto; }
+
+/* The map needs an explicit height to render */
+#alertMap {
+  flex: 1 1 auto;      /* fill the remaining space in the card */
+  min-height: 260px;   /* safety for smaller screens */
+  width: 100%;
+}
+
 </style>
 </head>
 <body>
@@ -168,6 +180,11 @@
   const map = L.map('alertMap').setView([40.7, -73.6], 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
   const markersLayer = L.layerGroup().addTo(map);
+
+  // Make sure tiles size correctly after layout
+setTimeout(() => map.invalidateSize(), 200);
+window.addEventListener('resize', () => map.invalidateSize());
+
 
   // Critical alerts use a crisp SVG flame marker
   const fireIcon = L.divIcon({
