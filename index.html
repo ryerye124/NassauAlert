@@ -201,7 +201,7 @@
   /* === existing code above stays === */
 
   /* === NEW: critical feed config === */
-  const CRIT_URL = 'YOUR_WEB_APP_URL/exec?channel=critical&limit=40';
+  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbz0KpL0Drp-qT6s9h7YshCbY_dwjOgLD7myohbWt8VPHFeDGxTcgP4JYFFK8gPQwJp7/exec/exec?channel=critical&limit=40';
 
   /* === NEW: simple WebAudio beep (440Hz) === */
   function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
@@ -345,7 +345,7 @@
   const markersLayer = L.layerGroup().addTo(map);
 
   // ===== CONFIG =====
-  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbzHAeREtE73IKeCJR7_aErqbqNiVrqIzVxUTeKzeebsejYji9TDbo1ILJac32CuCTo/exec/exec?limit=200';
+  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbz0KpL0Drp-qT6s9h7YshCbY_dwjOgLD7myohbWt8VPHFeDGxTcgP4JYFFK8gPQwJp7/exec?limit=100';
   const POLL_MS = 20_000;
   const TTL_MS  = 15 * 60 * 1000;
 
