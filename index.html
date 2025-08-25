@@ -280,7 +280,7 @@
   });
 
   /* ===== NORMAL FEED (ticker + map) ===== */
-  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbwjKKxg6mqOkjyZnUq2p4g2osIpTUlPKjlUg4RXFpj2W6u48sLnxjUlf7nN9ws394Zp/exec?limit=100';
+  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbyslIj5Bneb4-KtdhsBZyctHZ4zfVbMqUUXS_ARh2y33b7V8R9ILbZywvSRT1zKB0mQ/exec?limit=100';
   const POLL_MS = 20000;
 
   const live = new Map(); // id -> { marker, expiresAt, tickerSpan }
@@ -364,7 +364,8 @@
 
       for (const a of alerts) {
         const id = a.id;
-        const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
+        const tsMs = parseTs(a.eventTimestamp);
+        const exp = Math.max(now, (Number.isNaN(tsMs) ? now : tsMs) + TTL_MS); /* safety */
 
         if (live.has(id)) {
           live.get(id).expiresAt = Math.max(live.get(id).expiresAt, exp);
@@ -404,7 +405,7 @@
   });
 
   /* ===== CRITICAL FEED (title bar with beep/flash + fire pins) ===== */
-  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbwjKKxg6mqOkjyZnUq2p4g2osIpTUlPKjlUg4RXFpj2W6u48sLnxjUlf7nN9ws394Zp/exec?channel=critical&limit=40';
+  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbyslIj5Bneb4-KtdhsBZyctHZ4zfVbMqUUXS_ARh2y33b7V8R9ILbZywvSRT1zKB0mQ/exec?channel=critical&limit=40';
 
   function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
     try {
@@ -480,7 +481,8 @@
 
       for (const a of items) {
         const id = a.id;
-        const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
+        const tsMs = parseTs(a.eventTimestamp);
+        const exp = Math.max(now, (Number.isNaN(tsMs) ? now : tsMs) + TTL_MS); /* safety */
         if (critLive.has(id)) {
           critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
           continue;
