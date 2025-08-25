@@ -5,147 +5,53 @@
 <title>Nassau Alerts Command Center</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #111;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
+  body { margin: 0; font-family: Arial, sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; min-height: 100vh; }
 
   /* HEADER */
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #222;
-    padding: 10px 20px;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    font-weight: bold;
-  }
+  header { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 10px 20px; position: sticky; top: 0; z-index: 1000; font-weight: bold; }
   header div { min-width: 150px; text-align: center; }
 
   /* CRITICAL BAR (between header and ticker) */
-  .critical-wrap {
-    overflow: hidden;
-    background: #4a0000; /* dark red base */
-    height: 30px;
-    position: sticky;
-    top: 50px; /* header ~50px */
-    z-index: 9999;
-    border-bottom: 1px solid #660000;
-  }
-  .critical {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 18px;
-    padding: 0 12px;
-    color: #fff;
-    line-height: 30px;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-  }
-  .critical .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #220000;
-    padding: 3px 10px;
-    border-radius: 999px;
-    border: 1px solid #660000;
-  }
-  @keyframes critFlash {
-    0% { filter: brightness(1); }
-    50% { filter: brightness(2.2); }
-    100% { filter: brightness(1); }
-  }
+  .critical-wrap { overflow: hidden; background: #4a0000; height: 30px; position: sticky; top: 50px; z-index: 9999; border-bottom: 1px solid #660000; }
+  .critical { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 0 12px; color: #fff; line-height: 30px; font-weight: 700; letter-spacing: 0.2px; }
+  .critical .chip { display: inline-flex; align-items: center; gap: 8px; background: #220000; padding: 3px 10px; border-radius: 999px; border: 1px solid #660000; }
+  @keyframes critFlash { 0% { filter: brightness(1); } 50% { filter: brightness(2.2); } 100% { filter: brightness(1); } }
   .critical.flash-twice { animation: critFlash 0.6s ease-in-out 2; }
 
   /* TICKER */
-  .ticker-wrap {
-    overflow: hidden;
-    background: #333;
-    height: 30px;
-    position: sticky;
-    top: 80px; /* header 50 + critical 30 */
-    z-index: 999;
-  }
-  .ticker {
-    display: inline-block;
-    white-space: nowrap;
-    padding-left: 100%;
-    animation: scroll 45s linear infinite;
-    color: #ffcc00;
-    line-height: 30px;
-  }
+  .ticker-wrap { overflow: hidden; background: #333; height: 30px; position: sticky; top: 80px; z-index: 999; }
+  .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: scroll 45s linear infinite; color: #ffcc00; line-height: 30px; }
   @keyframes scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
 
   /* MAIN GRID */
-  main {
-    flex: 1;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: 2fr 1fr;
-    gap: 10px;
-    padding: 10px;
-    height: calc(100vh - 100px);
-  }
-
-  .card {
-    background: #222;
-    border-radius: 10px;
-    padding: 5px;
-    overflow: hidden;
-  }
-  .card h2 {
-    margin: 0 0 5px 0;
-    font-size: 16px;
-    border-bottom: 1px solid #444;
-    padding-bottom: 3px;
-  }
-
+  main { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 2fr 1fr; gap: 10px; padding: 10px; height: calc(100vh - 100px); }
+  .card { background: #222; border-radius: 10px; padding: 5px; overflow: hidden; }
+  .card h2 { margin: 0 0 5px 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 3px; }
   iframe { width: 100%; height: 100%; border: none; }
 
-  .radio-container {
-    display: grid;
-    grid-template-rows: 1fr 1fr;
-    gap: 5px;
+  /* Bulletin card (replaces radio feeds) */
+  .bulletin-body {
     height: 100%;
+    overflow: auto;
+    padding: 8px 10px;
+    background: #1a1a1a;
+    border-radius: 8px;
+    line-height: 1.35;
+    white-space: pre-line;       /* keep your line breaks */
   }
+  .bulletin-body a { color: #ffcc00; text-decoration: underline; }
+  .bulletin-body ul { margin: 6px 0 6px 18px; }
+  .bulletin-body p { margin: 6px 0; }
 
-  #alertMap { width: 100%; height: 100%; }
-
-  footer {
-    background: #222;
-    padding: 10px;
-    text-align: center;
-    font-size: 12px;
-    color: #aaa;
-  }
-  footer a { color: #ffcc00; text-decoration: none; }
-
-  /* Critical map icon (SVG) */
-  .leaflet-div-icon.crit-icon {
-    background: transparent;
-    border: none;
-  }
-  .crit-icon svg {
-    width: 28px;
-    height: 34px;
-    display: block;
-    filter: drop-shadow(0 0 2px #000);
-  }
+  /* Map icon (SVG) for criticals */
+  .leaflet-div-icon.crit-icon { background: transparent; border: none; }
+  .crit-icon svg { width: 28px; height: 34px; display: block; filter: drop-shadow(0 0 2px #000); }
 
   /* RESPONSIVE */
   @media (max-width: 1024px) {
     main { grid-template-columns: repeat(2, 1fr); grid-template-rows: 2fr 1fr 1fr; }
-    .card:nth-child(4) { grid-column: span 2; }
-    .card:nth-child(5) { grid-column: span 2; }
+    .card:nth-child(4) { grid-column: span 2; } /* bulletin */
+    .card:nth-child(5) { grid-column: span 2; } /* map */
   }
   @media (max-width: 600px) {
     main { grid-template-columns: 1fr; grid-template-rows: repeat(5, 1fr); }
@@ -174,20 +80,46 @@
     <h2>Radar (NWS)</h2>
     <iframe src="https://radar.weather.gov/ridge/standard/NORTHEAST_loop.gif"></iframe>
   </div>
+
   <div class="card">
     <h2>Fire & Smoke Map (NWS)</h2>
     <iframe src="https://radar.weather.gov/"></iframe>
   </div>
+
   <div class="card">
     <h2>NY Wildfire Tracker</h2>
     <iframe src="https://www.mapofire.com/state/new-york"></iframe>
   </div>
 
-  <div class="card radio-container">
-    <h2>Live Radio Feeds</h2>
-    <iframe src="http://live.monitorlongisland.com/ncfd-east"></iframe>
-    <iframe src="http://live.monitorlongisland.com/ncfd-west"></iframe>
+  <!-- REPLACED: Radio card -> Bulletin card -->
+ <div class="card">
+  <h2 style="display:flex;align-items:center;justify-content:space-between;">
+    <span>Weekly Bulletin</span>
+    <span class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;">
+      <button id="bulletinSave" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Save</button>
+      <button id="bulletinRevert" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Revert</button>
+      <button id="bulletinClear" style="background:#552222;color:#fff;border:1px solid #774444;border-radius:6px;padding:4px 8px;cursor:pointer;">Clear</button>
+      <span id="bulletinStatus" style="color:#aaa;font-size:12px;"></span>
+    </span>
+  </h2>
+
+  <!-- Make this editable -->
+  <div id="bulletin" class="bulletin-body" contenteditable="true">
+    Welcome to the Nassau Alerts Command Center.
+
+    • This space is for weekly notes, planned drills, weather watches, or reminders.
+    • You can put links here: https://www.weather.gov/
+    • Basic formatting is supported (line breaks, lists).
+
+    Example:
+    - Sunday 09:00: Hydrant testing – North district
+    - Tuesday 19:00: EMT refresher – Station 3
+    - Thursday 18:30: Chiefs’ meeting – HQ
+
+    Stay safe.
   </div>
+</div>
+
 
   <div class="card">
     <h2>Alert Map</h2>
@@ -263,10 +195,13 @@
     iconAnchor: [14, 17]
   });
 
-  /* ===== NORMAL FEED (ticker + map) ===== */
-  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbwjKKxg6mqOkjyZnUq2p4g2osIpTUlPKjlUg4RXFpj2W6u48sLnxjUlf7nN9ws394Zp/exec?limit=100';
+  /* ===== FEED ENDPOINTS ===== */
+  const BASE_URL = 'https://script.google.com/macros/s/AKfycbwjKKxg6mqOkjyZnUq2p4g2osIpTUlPKjlUg4RXFpj2W6u48sLnxjUlf7nN9ws394Zp/exec';
+  const ALERTS_URL = `${BASE_URL}?limit=100`;                    // normal
+  const CRIT_URL   = `${BASE_URL}?channel=critical&limit=40`;   // critical
   const POLL_MS = 20000;
 
+  /* ===== NORMAL FEED (ticker + map) ===== */
   const live = new Map(); // id -> { marker, expiresAt, tickerSpan }
   const tickerEl = document.getElementById('ticker');
 
@@ -331,12 +266,10 @@
       eventTimestamp: r.eventTimestamp,
       lat: r.lat != null ? Number(r.lat) : null,
       lng: r.lng != null ? Number(r.lng) : null
-    }))
-    .filter(x => !Number.isNaN(parseTs(x.eventTimestamp)));
+    })).filter(x => !Number.isNaN(parseTs(x.eventTimestamp)));
   }
 
-  let timer = null;
-  let cleanupTimer = null;
+  let timer = null, cleanupTimer = null;
 
   async function tick() {
     try {
@@ -345,7 +278,6 @@
       tickerEl.dataset.placeholderShown = '';
 
       const now = Date.now();
-
       for (const a of alerts) {
         const id = a.id;
         const tsMs = parseTs(a.eventTimestamp);
@@ -367,14 +299,13 @@
 
         live.set(id, { marker, tickerSpan: chip, expiresAt: exp });
 
-        // NEW: geocode if missing coords
+        // Geocode if missing coords (normal feed)
         if (marker == null) {
           maybeGeocodeAndDropPin_Normal(a, id);
         }
       }
 
       cleanupExpired();
-      // console.debug('BRYX tick', new Date().toLocaleTimeString(), `alerts now=${live.size}`);
     } catch (err) {
       console.error('BRYX fetch failed:', err);
     }
@@ -394,8 +325,6 @@
   });
 
   /* ===== CRITICAL FEED (title bar with beep/flash + fire pins) ===== */
-  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbwjKKxg6mqOkjyZnUq2p4g2osIpTUlPKjlUg4RXFpj2W6u48sLnxjUlf7nN9ws394Zp/exec?channel=critical&limit=40';
-
   function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -424,11 +353,33 @@
     const dot = document.createElement('span');
     dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
     const txt = document.createElement('span');
-    txt.textContent = `${(a.category||'CRITICAL').toUpperCase()} • ${a.location||''}${a.city? ', '+a.city:''} • ${fmtTime(a.eventTimestamp)}`;
+    const parts = [
+      (a.category || 'CRITICAL').toUpperCase(),
+      (a.callType || '').trim(),
+      `${a.location || ''}${a.city ? ', ' + a.city : ''}`,
+      fmtTime(a.eventTimestamp)
+    ].filter(Boolean);
+    txt.textContent = parts.join(' • ');
     const chip = document.createElement('span');
     chip.className = 'chip';
     chip.append(dot, txt);
     return chip;
+  }
+
+  async function fetchCriticalOnce() {
+    const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    return (json.results || []).map(r => ({
+      id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
+      category: r.category,
+      callType: r.callType,
+      location: r.location,
+      city: r.city,
+      eventTimestamp: r.eventTimestamp,
+      lat: r.lat != null ? Number(r.lat) : null,
+      lng: r.lng != null ? Number(r.lng) : null
+    })).filter(x => x.eventTimestamp);
   }
 
   function cleanupCritical() {
@@ -443,21 +394,6 @@
     if (critLive.size === 0) {
       criticalBar.textContent = 'No critical alerts.';
     }
-  }
-
-  async function fetchCriticalOnce() {
-    const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    const json = await res.json();
-    return (json.results || []).map(r => ({
-      id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
-      category: r.category,
-      location: r.location,
-      city: r.city,
-      eventTimestamp: r.eventTimestamp,
-      lat: r.lat != null ? Number(r.lat) : null,
-      lng: r.lng != null ? Number(r.lng) : null
-    })).filter(x => x.eventTimestamp);
   }
 
   async function tickCritical() {
@@ -488,7 +424,7 @@
 
         critLive.set(id, { el: chip, marker, expiresAt: exp });
 
-        // NEW: geocode if missing coords
+        // Geocode if missing coords (critical feed)
         if (marker == null) {
           maybeGeocodeAndDropPin_Critical(a, id);
         }
@@ -498,7 +434,7 @@
 
       if (introduced > 0) {
         criticalBar.classList.remove('flash-twice');
-        void criticalBar.offsetWidth; // restart animation
+        void criticalBar.offsetWidth;
         criticalBar.classList.add('flash-twice');
         beep(2, 140, 120, 988);
         criticalBar.addEventListener('animationend', () => {
@@ -512,16 +448,11 @@
     }
   }
 
-  /* ===== Geocoding: config, cache, queue, and helpers ===== */
+  /* ===== Geocoding (single copy) ===== */
+  const GEOCODE_RATE_MS = 1200;
+  const GEOCODE_TTL_MS  = 7 * 24 * 60 * 60 * 1000;  // 7 days cache
+  const GEOCODE_BOUNDS  = { minLon: -73.90, minLat: 40.50, maxLon: -73.40, maxLat: 40.90 };
 
-  // Geocoder config (Nominatim)
-  const GEOCODE_RATE_MS = 1200;                     // ~1 req/sec
-  const GEOCODE_TTL_MS  = 7 * 24 * 60 * 60 * 1000;  // cache 7 days
-  const GEOCODE_BOUNDS  = {                         // Nassau County-ish box
-    minLon: -73.90, minLat: 40.50, maxLon: -73.40, maxLat: 40.90
-  };
-
-  // localStorage cache
   const geoCache = {
     get(key) {
       try {
@@ -533,18 +464,15 @@
       } catch { return null; }
     },
     set(key, lat, lng) {
-      try {
-        localStorage.setItem('geo_'+key, JSON.stringify({lat,lng,t:Date.now()}));
-      } catch {}
+      try { localStorage.setItem('geo_'+key, JSON.stringify({lat,lng,t:Date.now()})); } catch {}
     }
   };
 
-  // rate-limited queue
   const geocodeQueue = []; // items: { key, query, onResult }
   let geocodeTimer = null;
 
   function enqueueGeocode(key, query, onResult) {
-    if (geocodeQueue.find(q => q.key === key)) return; // de-dupe pending
+    if (geocodeQueue.find(q => q.key === key)) return;
     geocodeQueue.push({ key, query, onResult });
     if (!geocodeTimer) geocodeTimer = setInterval(processGeocodeQueue, GEOCODE_RATE_MS);
   }
@@ -593,16 +521,13 @@
     }
   }
 
-  // attach geocoded marker for normal feed
   function maybeGeocodeAndDropPin_Normal(a, id) {
     if (typeof a.lat === 'number' && typeof a.lng === 'number') return;
     const entry = live.get(id);
     if (!entry) return;
     if ((entry.expiresAt - Date.now()) < 30000) return;
-
     const addr = `${a.location || ''}${a.city ? ', '+a.city : ''}, NY`.trim();
     if (!addr || addr === ', NY') return;
-
     const cacheKey = addr.toLowerCase();
     enqueueGeocode(cacheKey, addr, (lat, lng) => {
       if (lat == null || lng == null) return;
@@ -614,15 +539,12 @@
     });
   }
 
-  // attach geocoded marker for critical feed
   function maybeGeocodeAndDropPin_Critical(a, id) {
     const entry = critLive.get(id);
     if (!entry) return;
     if ((entry.expiresAt - Date.now()) < 30000) return;
-
     const addr = `${a.location || ''}${a.city ? ', '+a.city : ''}, NY`.trim();
     if (!addr || addr === ', NY') return;
-
     const cacheKey = 'crit:'+addr.toLowerCase();
     enqueueGeocode(cacheKey, addr, (lat, lng) => {
       if (lat == null || lng == null) return;
@@ -632,6 +554,69 @@
       curr.marker = marker;
     });
   }
+// ===== Bulletin: local (browser) storage =====
+const BULLETIN_KEY = 'bulletin_text_v1';
+const bulletinEl = document.getElementById('bulletin');
+const saveBtn    = document.getElementById('bulletinSave');
+const revertBtn  = document.getElementById('bulletinRevert');
+const clearBtn   = document.getElementById('bulletinClear');
+const statusEl   = document.getElementById('bulletinStatus');
+
+let bulletinDirty = false;
+
+function bulletinLoad() {
+  try {
+    const saved = localStorage.getItem(BULLETIN_KEY);
+    if (saved) bulletinEl.innerHTML = saved;
+  } catch {}
+  statusEl.textContent = '';
+}
+
+function bulletinSave() {
+  try {
+    localStorage.setItem(BULLETIN_KEY, bulletinEl.innerHTML);
+    bulletinDirty = false;
+    const t = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+    statusEl.textContent = `Saved ${t}`;
+    setTimeout(() => (statusEl.textContent = ''), 3000);
+  } catch (e) {
+    statusEl.textContent = 'Save failed';
+  }
+}
+
+function bulletinClear() {
+  if (!confirm('Clear bulletin and remove saved copy?')) return;
+  bulletinEl.innerHTML = '';
+  try { localStorage.removeItem(BULLETIN_KEY); } catch {}
+  statusEl.textContent = 'Cleared';
+  setTimeout(() => (statusEl.textContent = ''), 2000);
+}
+
+function bulletinRevert() {
+  bulletinLoad();
+}
+
+// Events
+bulletinEl.addEventListener('input', () => { bulletinDirty = true; });
+
+// Buttons
+saveBtn.addEventListener('click', bulletinSave);
+revertBtn.addEventListener('click', bulletinRevert);
+clearBtn.addEventListener('click', bulletinClear);
+
+// Auto-save every 10s if changed
+setInterval(() => { if (bulletinDirty) bulletinSave(); }, 10000);
+
+// Cmd/Ctrl+S to save
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    bulletinSave();
+  }
+});
+
+// Load any saved content on page load
+bulletinLoad();
 
   /* ===== Start both pollers ===== */
   function init() {
@@ -643,3 +628,4 @@
 </script>
 </body>
 </html>
+
