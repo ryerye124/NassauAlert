@@ -241,7 +241,7 @@
   const markersLayer = L.layerGroup().addTo(map);
 
   /* ===== NORMAL FEED (ticker + map) ===== */
-  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbz0KpL0Drp-qT6s9h7YshCbY_dwjOgLD7myohbWt8VPHFeDGxTcgP4JYFFK8gPQwJp7/exec?limit=100';
+  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbz7L4CEb-AydTculVUXRbZnLa73CDBAnVQIaUzQB0eVjZeqW66joTsVg2eaqjuyalx6/exec?limit=100';
   const POLL_MS = 20_000;
 
   const live = new Map(); // id -> { marker, expiresAt, tickerSpan }
@@ -358,7 +358,7 @@
   });
 
   /* ===== CRITICAL FEED (title bar with beep/flash) ===== */
-  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbz0KpL0Drp-qT6s9h7YshCbY_dwjOgLD7myohbWt8VPHFeDGxTcgP4JYFFK8gPQwJp7/exec?channel=critical&limit=40';
+  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbz7L4CEb-AydTculVUXRbZnLa73CDBAnVQIaUzQB0eVjZeqW66joTsVg2eaqjuyalx6/exec?channel=critical&limit=40';
 
   function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
     try {
