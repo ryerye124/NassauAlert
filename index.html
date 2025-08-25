@@ -205,9 +205,16 @@
     return Number.isNaN(t) ? Date.parse(cleaned) : t;
   }
   const fmtTime = (v) => {
-    const ms = typeof v === 'number' ? v : parseTs(v);
-    return Number.isNaN(ms) ? '—' : new Date(ms).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  };
+  const ms = typeof v === 'number' ? v : parseTs(v);
+  return Number.isNaN(ms)
+    ? '—'
+    : new Date(ms).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false   //  24-hour format
+      });
+};
+
   function cacheBusted(url) {
     const sep = url.includes('?') ? '&' : '?';
     return `${url}${sep}_cb=${Date.now()}`;
@@ -215,11 +222,15 @@
 
   /* ===== CLOCKS ===== */
   function updateClocks() {
-    const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
-    const zulu = new Date().toISOString().substring(11,19) + "Z";
-    document.getElementById("est-time").textContent = "EST: " + est;
-    document.getElementById("zulu-time").textContent = "Zulu: " + zulu;
-  }
+  const est = new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    hour12: false   //  24-hour
+  });
+  const zulu = new Date().toISOString().substring(11,19) + "Z";
+  document.getElementById("est-time").textContent = "EST: " + est;
+  document.getElementById("zulu-time").textContent = "Zulu: " + zulu;
+}
+
   setInterval(updateClocks, 1000);
   updateClocks();
 
