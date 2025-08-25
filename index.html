@@ -129,18 +129,17 @@
   }
   footer a { color: #ffcc00; text-decoration: none; }
 
-  /* Critical map icon */
-.leaflet-div-icon.crit-icon {
-  background: transparent;
-  border: none;
-}
-.crit-icon svg {
-  width: 28px;
-  height: 34px;
-  display: block;
-  filter: drop-shadow(0 0 2px #000);
-}
-
+  /* Critical map icon (SVG) */
+  .leaflet-div-icon.crit-icon {
+    background: transparent;
+    border: none;
+  }
+  .crit-icon svg {
+    width: 28px;
+    height: 34px;
+    display: block;
+    filter: drop-shadow(0 0 2px #000);
+  }
 
   /* RESPONSIVE */
   @media (max-width: 1024px) {
@@ -205,7 +204,7 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-  /* ===== GLOBAL CONFIG & HELPERS (shared by both tickers) ===== */
+  /* ===== GLOBAL CONFIG & HELPERS ===== */
   const TTL_MS = 15 * 60 * 1000;   // keep items for 15 minutes
 
   function parseTs(s) {
@@ -221,11 +220,7 @@
     const ms = typeof v === 'number' ? v : parseTs(v);
     return Number.isNaN(ms)
       ? '—'
-      : new Date(ms).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false   // 24-hour format
-        });
+      : new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   };
   function cacheBusted(url) {
     const sep = url.includes('?') ? '&' : '?';
@@ -234,10 +229,7 @@
 
   /* ===== CLOCKS ===== */
   function updateClocks() {
-    const est = new Date().toLocaleString("en-US", {
-      timeZone: "America/New_York",
-      hour12: false   // 24-hour
-    });
+    const est = new Date().toLocaleString("en-US", { timeZone: "America/New_York", hour12: false });
     const zulu = new Date().toISOString().substring(11,19) + "Z";
     document.getElementById("est-time").textContent = "EST: " + est;
     document.getElementById("zulu-time").textContent = "Zulu: " + zulu;
@@ -247,51 +239,49 @@
 
   /* ===== MAP ===== */
   const map = L.map('alertMap').setView([40.7, -73.6], 10);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
   const markersLayer = L.layerGroup().addTo(map);
 
- // Critical alerts use a crisp SVG flame marker
-const fireIcon = L.divIcon({
-  className: 'crit-icon leaflet-div-icon',
-  html: `
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <defs>
-        <linearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#FFA726"/>
-          <stop offset="60%" stop-color="#FB8C00"/>
-          <stop offset="100%" stop-color="#E53935"/>
-        </linearGradient>
-      </defs>
-      <!-- Outer flame -->
-      <path fill="url(#flameGrad)" d="
-        M32 4
-        c 8 10 -4 16 -4 26
-        c 0 8 8 12 8 20
-        c 0 8 -6 14 -14 14
-        c -10 0 -18 -8 -18 -20
-        c 0 -12 10 -18 16 -26
-        c 6 -8 4 -12 12 -14
-        z"/>
-      <!-- Inner flame -->
-      <path fill="#FFE082" d="
-        M26 40
-        c 4 4 2 8 0 10
-        c -2 2 -6 2 -8 -2
-        c -2 -4 2 -8 8 -8
-        z"/>
-      <!-- Spark -->
-      <circle cx="41" cy="15" r="3" fill="#FFCC80"/>
-    </svg>
-  `,
-  iconSize: [28, 34],
-  iconAnchor: [14, 17]
-});
-
+  // Critical alerts use a crisp SVG flame marker
+  const fireIcon = L.divIcon({
+    className: 'crit-icon leaflet-div-icon',
+    html: `
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <linearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FFA726"/>
+            <stop offset="60%" stop-color="#FB8C00"/>
+            <stop offset="100%" stop-color="#E53935"/>
+          </linearGradient>
+        </defs>
+        <!-- Outer flame -->
+        <path fill="url(#flameGrad)" d="
+          M32 4
+          c 8 10 -4 16 -4 26
+          c 0 8 8 12 8 20
+          c 0 8 -6 14 -14 14
+          c -10 0 -18 -8 -18 -20
+          c 0 -12 10 -18 16 -26
+          c 6 -8 4 -12 12 -14
+          z"/>
+        <!-- Inner flame -->
+        <path fill="#FFE082" d="
+          M26 40
+          c 4 4 2 8 0 10
+          c -2 2 -6 2 -8 -2
+          c -2 -4 2 -8 8 -8
+          z"/>
+        <!-- Spark -->
+        <circle cx="41" cy="15" r="3" fill="#FFCC80"/>
+      </svg>
+    `,
+    iconSize: [28, 34],
+    iconAnchor: [14, 17]
+  });
 
   /* ===== NORMAL FEED (ticker + map) ===== */
-  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbxtx8rg_JqLT-VjqUSSTfzHuN2Egg4ZsjH0s4xLVFzQlWaEn5AQOkIF4_UIeNvT3434/exec?limit=100';
-  const POLL_MS = 20_000;
+  const ALERTS_URL = 'https://script.google.com/macros/s/AKfycbwjKKxg6mqOkjyZnUq2p4g2osIpTUlPKjlUg4RXFpj2W6u48sLnxjUlf7nN9ws394Zp/exec?limit=100';
+  const POLL_MS = 20000;
 
   const live = new Map(); // id -> { marker, expiresAt, tickerSpan }
   const tickerEl = document.getElementById('ticker');
@@ -358,7 +348,7 @@ const fireIcon = L.divIcon({
       lat: r.lat != null ? Number(r.lat) : null,
       lng: r.lng != null ? Number(r.lng) : null
     }))
-    .filter(x => !Number.isNaN(parseTs(x.eventTimestamp))); // keep even without coords
+    .filter(x => !Number.isNaN(parseTs(x.eventTimestamp)));
   }
 
   let timer = null;
@@ -368,7 +358,7 @@ const fireIcon = L.divIcon({
     try {
       const alerts = await fetchAlertsOnce();
       alerts.sort((a,b)=> parseTs(b.eventTimestamp) - parseTs(a.eventTimestamp));
-      tickerEl.dataset.placeholderShown = ''; // clear placeholder flag
+      tickerEl.dataset.placeholderShown = '';
 
       const now = Date.now();
 
@@ -376,7 +366,6 @@ const fireIcon = L.divIcon({
         const id = a.id;
         const exp = Math.max(now, parseTs(a.eventTimestamp) + TTL_MS);
 
-        // de-dup / refresh
         if (live.has(id)) {
           live.get(id).expiresAt = Math.max(live.get(id).expiresAt, exp);
           continue;
@@ -405,7 +394,7 @@ const fireIcon = L.divIcon({
     if (timer) return;
     tick(); // immediate
     timer = setInterval(tick, POLL_MS);
-    if (!cleanupTimer) cleanupTimer = setInterval(cleanupExpired, 10_000);
+    if (!cleanupTimer) cleanupTimer = setInterval(cleanupExpired, 10000);
   }
   function stopPolling() { clearInterval(timer); timer = null; }
 
@@ -415,7 +404,7 @@ const fireIcon = L.divIcon({
   });
 
   /* ===== CRITICAL FEED (title bar with beep/flash + fire pins) ===== */
-  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbxtx8rg_JqLT-VjqUSSTfzHuN2Egg4ZsjH0s4xLVFzQlWaEn5AQOkIF4_UIeNvT3434/exec?channel=critical&limit=40';
+  const CRIT_URL = 'https://script.google.com/macros/s/AKfycbwjKKxg6mqOkjyZnUq2p4g2osIpTUlPKjlUg4RXFpj2W6u48sLnxjUlf7nN9ws394Zp/exec?channel=critical&limit=40';
 
   function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
     try {
