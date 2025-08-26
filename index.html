@@ -423,23 +423,27 @@
   const critLive = new Map(); // id -> { el, marker, expiresAt }
 
   function makeCritChip(a) {
-    const dot = document.createElement('span');
-    dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
-    const txt = document.createElement('span');
+  const dot = document.createElement('span');
+  dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
 
-    const parts = [
-      (a.category || 'CRITICAL').toUpperCase(),
-      (a.callType || '').toString().trim(),
-      [a.location || '', a.city ? a.city : '', a.state ? a.state : ''].filter(Boolean).join(', '),
-      fmtTime(a.eventTimestamp)
-    ].filter(Boolean);
+  const txt = document.createElement('span');
 
-    txt.textContent = parts.join(' • ');
-    const chip = document.createElement('span');
-    chip.className = 'chip';
-    chip.append(dot, txt);
-    return chip;
-  }
+  // Prefer callType; fall back to category (uppercased) if missing
+  const title = (a.callType && String(a.callType).trim())
+    || ((a.category ? String(a.category).toUpperCase() : 'CRITICAL'));
+
+  const addr  = [a.location || '', a.city || '', a.state || 'NY']
+    .filter(Boolean).join(', ');
+  const time  = fmtTime(a.eventTimestamp);
+
+  txt.textContent = `${title} - ${addr} - ${time}`;
+
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.append(dot, txt);
+  return chip;
+}
+
 
   async function fetchCriticalOnce() {
     const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
