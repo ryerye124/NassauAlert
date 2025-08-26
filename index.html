@@ -45,22 +45,24 @@
   .card > iframe { border: none; }
 
   /* Bulletin look + WRAPPING (no grid stretch) */
-  .bulletin-body {
-    overflow: auto;
-    padding: 8px 10px;
-    background: #1a1a1a;
-    border-radius: 8px;
-    line-height: 1.35;
-    white-space: pre-wrap;             /* keep line breaks, allow wrapping */
-    overflow-wrap: anywhere;           /* wrap long words/URLs */
-    word-wrap: break-word;             /* legacy fallback */
-    word-break: break-word;            /* Safari/Chrome help */
-  }
-  .bulletin-body * {
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-  .bulletin-body a { color: #ffcc00; text-decoration: underline; }
+ .bulletin-body {
+  overflow: auto;
+  padding: 8px 10px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  line-height: 1.35;
+
+  /* Wrapping so nothing stretches the grid */
+  white-space: pre-wrap;        /* keep your line breaks, wrap long lines */
+  overflow-wrap: anywhere;      /* break very long words/URLs */
+  word-break: break-word;       /* extra safety for long tokens */
+  max-width: 100%;
+}
+.bulletin-body a {
+  color: #ffcc00;
+  text-decoration: underline;
+  word-break: break-word;       /* wrap long link text too */
+}
 
   /* Map icon (SVG) for criticals */
   .leaflet-div-icon.crit-icon { background: transparent; border: none; }
@@ -161,13 +163,19 @@
   <div class="card bulletin-read-card" data-card-id="right-board">
     <h2 class="click-fs">Quick Links and Numbers</h2>
     <div id="bulletinRead" class="bulletin-body" aria-readonly="true">
-      Fire-Com: (516) 573-9800
-      Med-Com: (516) 572-6259
-      LIRR/MTA: (718) 558-8204
-      CHEM-TREC: (800) 424-9300
-      Poison Control: (800) 222-1222
-      Hospital Availability: https://docs.google.com/spreadsheets/d/1nJYeGR6hNn5gIzqTDmN7qvdqQzU7Z_vAmUCiq1XAjYE/edit?gid=0#gid=0
-    </div>
+  Fire-Com: (516) 573-9800
+  Med-Com: (516) 572-6259
+  LIRR/MTA: (718) 558-8204
+  CHEM-TREC: (800) 424-9300
+  Poison Control: (800) 222-1222
+
+  Hospital Availability:
+  <a href="https://docs.google.com/spreadsheets/d/1nJYeGR6hNn5gIzqTDmN7qvdqQzU7Z_vAmUCiq1XAjYE/edit?gid=0"
+     target="_blank" rel="noopener noreferrer">
+    Hospital Availability Sheet
+  </a>
+</div>
+
   </div>
 </main>
 
