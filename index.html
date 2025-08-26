@@ -8,8 +8,9 @@
   body { margin: 0; font-family: Arial, sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; min-height: 100vh; }
 
   /* HEADER */
-  header { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 10px 20px; position: sticky; top: 0; z-index: 1000; font-weight: bold; }
+  header { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 10px 20px; position: sticky; top: 0; z-index: 1000; font-weight: bold; flex-wrap: wrap; gap: 8px; }
   header div { min-width: 150px; text-align: center; }
+  .header-actions button { background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:6px 10px;cursor:pointer; }
 
   /* CRITICAL BAR (between header and ticker) */
   .critical-wrap { overflow: hidden; background: #4a0000; height: 30px; position: sticky; top: 50px; z-index: 9999; border-bottom: 1px solid #660000; }
@@ -81,6 +82,11 @@
 
   /* Map container */
   #alertMap { flex: 1 1 auto; min-height: 260px; width: 100%; }
+
+  /* ===== Edit mode visuals (temporary only; no persistence) ===== */
+  body.edit-mode .card { outline: 1px dashed #555; cursor: grab; }
+  body.edit-mode .card:active { cursor: grabbing; }
+  .card.dragging { opacity: 0.6; outline: 2px dashed #888; }
 </style>
 </head>
 <body>
@@ -89,6 +95,10 @@
   <div id="est-time">EST: --:--:--</div>
   <div>Nassau Alerts</div>
   <div id="zulu-time">Zulu: --:--:--</div>
+  <div class="header-actions">
+    <button id="editLayoutBtn">Edit layout</button>
+    <button id="resetLayoutBtn" style="display:none;">Reset</button>
+  </div>
 </header>
 
 <div class="critical-wrap">
@@ -100,23 +110,23 @@
 </div>
 
 <main>
-  <div class="card">
+  <div class="card" data-card-id="radar">
     <h2>Radar (NWS)</h2>
     <iframe src="https://radar.weather.gov/ridge/standard/NORTHEAST_loop.gif"></iframe>
   </div>
 
-  <div class="card">
+  <div class="card" data-card-id="smoke">
     <h2>Fire & Smoke Map (NWS)</h2>
     <iframe src="https://radar.weather.gov/"></iframe>
   </div>
 
-  <div class="card">
+  <div class="card" data-card-id="wildfire">
     <h2>NY Wildfire Tracker</h2>
     <iframe src="https://www.mapofire.com/state/new-york"></iframe>
   </div>
 
   <!-- Editable Note Pad (left of the map) -->
-  <div class="card bulletin-card">
+  <div class="card bulletin-card" data-card-id="note-pad">
     <h2 style="display:flex;align-items:center;justify-content:space-between;">
       <span>Note Pad</span>
       <span class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;">
@@ -139,21 +149,20 @@
   </div>
 
   <!-- Map (center) -->
-  <div class="card map-card">
+  <div class="card map-card" data-card-id="map">
     <h2>Alert Map</h2>
     <div id="alertMap"></div>
   </div>
 
   <!-- Independent, code-controlled board (right of the map) -->
-  <div class="card bulletin-read-card">
+  <div class="card bulletin-read-card" data-card-id="right-board">
     <h2>Quick Links and Numbers</h2>
     <div id="bulletinRead" class="bulletin-body" aria-readonly="true">
-      <!-- Default content if nothing has been set yet -->
       Fire-Com: (516) 573-9800
       Med-Com: (516) 572-6259
       LIRR/MTA: (718) 558-8204
       CHEM-TREC: (800) 424-9300
-      Poision Control: (800) 222-1222
+      Poison Control: (800) 222-1222
     </div>
   </div>
 </main>
@@ -651,7 +660,6 @@
   const BULLETIN_READ_KEY = 'bulletin_read_text_v1';
   const readEl = document.getElementById('bulletinRead');
 
-  // Load right board from storage (or keep default HTML in the page)
   function readBoardLoad() {
     try {
       const saved = localStorage.getItem(BULLETIN_READ_KEY);
@@ -659,21 +667,84 @@
     } catch {}
   }
 
-  // Dev helper: update the right board ONLY via code (no UI on the page).
-  // Usage (in code or console): setReadBoard('<strong>Your HTML</strong>')
   function setReadBoard(html) {
     try {
       localStorage.setItem(BULLETIN_READ_KEY, html);
       readEl.innerHTML = html;
     } catch {}
   }
-  // Expose helper for console use if needed:
   window.setReadBoard = setReadBoard;
+
+  /* ===== TEMPORARY LAYOUT DRAG (no persistence) ===== */
+  const mainEl = document.querySelector('main');
+  const editBtn = document.getElementById('editLayoutBtn');
+  const resetBtn = document.getElementById('resetLayoutBtn');
+  let editOn = false;
+  let dragSrcEl = null;
+
+  function setEditMode(on) {
+    document.body.classList.toggle('edit-mode', on);
+    Array.from(mainEl.children).forEach(card => {
+      if (card.classList.contains('card')) card.draggable = !!on;
+    });
+    resetBtn.style.display = on ? 'inline-block' : 'none';
+    if (!on && typeof map?.invalidateSize === 'function') {
+      setTimeout(() => map.invalidateSize(), 50);
+    }
+  }
+
+  function handleDragStart(e) {
+    const card = e.currentTarget;
+    dragSrcEl = card;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', card.dataset.cardId || '');
+  }
+  function handleDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    dragSrcEl = null;
+    if (typeof map?.invalidateSize === 'function') {
+      setTimeout(() => map.invalidateSize(), 50);
+    }
+  }
+  function handleDragOver(e) {
+    if (!editOn) return;
+    e.preventDefault(); // allow drop
+    const target = e.target.closest('.card');
+    if (!target || target === dragSrcEl) return;
+    const rect = target.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < rect.height / 2;
+    if (before) mainEl.insertBefore(dragSrcEl, target);
+    else mainEl.insertBefore(dragSrcEl, target.nextSibling);
+  }
+  function initDragAndDrop() {
+    mainEl.addEventListener('dragover', handleDragOver);
+    Array.from(mainEl.children).forEach(card => {
+      if (!card.classList.contains('card')) return;
+      card.addEventListener('dragstart', handleDragStart);
+      card.addEventListener('dragend', handleDragEnd);
+    });
+  }
+
+  if (editBtn) {
+    editBtn.addEventListener('click', () => {
+      editOn = !editOn;
+      editBtn.textContent = editOn ? 'Done' : 'Edit layout';
+      setEditMode(editOn);
+      if (editOn) initDragAndDrop();
+    });
+  }
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      // Hard reset to your canonical layout
+      location.reload();
+    });
+  }
 
   /* ===== Start everything ===== */
   function init() {
     bulletinLoad();     // left-board load
-    readBoardLoad();    // right-board load (no mirroring)
+    readBoardLoad();    // right-board load
     startPolling();     // normal feed
     setInterval(tickCritical, 15000); // critical feed
     tickCritical();
