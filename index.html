@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Nassau Alerts Command Center</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
@@ -24,7 +24,7 @@
   .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: scroll 45s linear infinite; color: #ffcc00; line-height: 30px; }
   @keyframes scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
 
-  /* MAIN GRID — locked proportions: top row 2/3, bottom row 1/3 */
+  /* MAIN GRID — top row 2/3, bottom row 1/3 */
   main {
     flex: 1;
     display: grid;
@@ -45,24 +45,22 @@
   .card > iframe { border: none; }
 
   /* Bulletin look + WRAPPING (no grid stretch) */
- .bulletin-body {
-  overflow: auto;
-  padding: 8px 10px;
-  background: #1a1a1a;
-  border-radius: 8px;
-  line-height: 1.35;
-
-  /* Wrapping so nothing stretches the grid */
-  white-space: pre-wrap;        /* keep your line breaks, wrap long lines */
-  overflow-wrap: anywhere;      /* break very long words/URLs */
-  word-break: break-word;       /* extra safety for long tokens */
-  max-width: 100%;
-}
-.bulletin-body a {
-  color: #ffcc00;
-  text-decoration: underline;
-  word-break: break-word;       /* wrap long link text too */
-}
+  .bulletin-body {
+    overflow: auto;
+    padding: 8px 10px;
+    background: #1a1a1a;
+    border-radius: 8px;
+    line-height: 1.35;
+    white-space: pre-wrap;        /* keep line breaks, wrap long lines */
+    overflow-wrap: anywhere;      /* break very long words/URLs */
+    word-break: break-word;       /* extra safety */
+    max-width: 100%;
+  }
+  .bulletin-body a {
+    color: #ffcc00;
+    text-decoration: underline;
+    word-break: break-word;
+  }
 
   /* Map icon (SVG) for criticals */
   .leaflet-div-icon.crit-icon { background: transparent; border: none; }
@@ -132,7 +130,7 @@
     <iframe src="https://www.mapofire.com/state/new-york"></iframe>
   </div>
 
-  <!-- Editable Note Pad (left of the map) -->
+  <!-- Editable Note Pad -->
   <div class="card bulletin-card" data-card-id="note-pad">
     <h2 class="click-fs">Note Pad</h2>
     <div class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;padding:6px 8px 0;">
@@ -143,53 +141,50 @@
       <span id="bulletinStatus" style="color:#aaa;font-size:12px;"></span>
     </div>
     <div id="bulletin" class="bulletin-body" contenteditable="true">
-      Welcome to the Nassau Alerts Command Center.
+Welcome to the Nassau Alerts Command Center.
 
-      • This space is editable by you! Use it for notes, or reminders.
-      • You can put links here: https://www.weather.gov/
-      • Basic formatting is supported (line breaks, lists).
+• This space is editable by you! Use it for notes, or reminders.
+• You can put links here: https://www.weather.gov/
+• Basic formatting is supported (line breaks, lists).
 
-      Stay safe.
+Stay safe.
     </div>
   </div>
 
-  <!-- Map (center) -->
+  <!-- Map -->
   <div class="card map-card" data-card-id="map">
     <h2 class="click-fs">Alert Map</h2>
     <div id="alertMap"></div>
   </div>
 
-  <!-- Independent, code-controlled board (right of the map) -->
+  <!-- Code-controlled bulletin -->
   <div class="card bulletin-read-card" data-card-id="right-board">
     <h2 class="click-fs">Quick Links and Numbers</h2>
     <div id="bulletinRead" class="bulletin-body" aria-readonly="true">
-  Fire-Com: (516) 573-9800
-  Med-Com: (516) 572-6259
-  LIRR/MTA: (718) 558-8204
-  CHEM-TREC: (800) 424-9300
-  Poison Control: (800) 222-1222
+Fire-Com: (516) 573-9800
+Med-Com: (516) 572-6259
+LIRR/MTA: (718) 558-8204
+CHEM-TREC: (800) 424-9300
+Poison Control: (800) 222-1222
 
-  Hospital Availability:
-  <a href="https://docs.google.com/spreadsheets/d/1nJYeGR6hNn5gIzqTDmN7qvdqQzU7Z_vAmUCiq1XAjYE/edit?gid=0"
-     target="_blank" rel="noopener noreferrer">
-    Hospital Availability Sheet
-  </a>
-</div>
-
+Hospital Availability:
+<a href="https://docs.google.com/spreadsheets/d/1nJYeGR6hNn5gIzqTDmN7qvdqQzU7Z_vAmUCiq1XAjYE/edit?gid=0"
+   target="_blank" rel="noopener noreferrer">Hospital Availability Sheet</a>
+    </div>
   </div>
 </main>
 
 <footer>
-  The information displayed and broadcasted is publicly available. 
-  The site owner does not own the information. 
-  The BRYX feed is made possible with continued access, granted by local departments. 
+  The information displayed and broadcasted is publicly available.
+  The site owner does not own the information.
+  The BRYX feed is made possible with continued access, granted by local departments.
   Email <a href="mailto:alertsnassau@gmail.com">alertsnassau@gmail.com</a> to add your department!
 </footer>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
   /* ===== GLOBAL CONFIG & HELPERS ===== */
-  const TTL_MS = 15 * 60 * 1000;   // keep items for 15 minutes
+  const TTL_MS = 15 * 60 * 1000;
 
   function parseTs(s) {
     if (!s) return NaN;
@@ -229,7 +224,6 @@
   window.addEventListener('resize', () => map.invalidateSize());
   if ('ResizeObserver' in window) new ResizeObserver(() => map.invalidateSize()).observe(mapEl);
 
-  // Critical alerts use a crisp SVG flame marker
   const fireIcon = L.divIcon({
     className: 'crit-icon leaflet-div-icon',
     html: `
@@ -376,7 +370,7 @@
     else stopPolling();
   });
 
-  /* ===== CRITICAL FEED (title bar with beep/flash + fire pins) ===== */
+  /* ===== CRITICAL FEED ===== */
   function beep(times = 2, durationMs = 140, gapMs = 120, freq = 880) {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -406,7 +400,6 @@
     dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
     const txt = document.createElement('span');
 
-    // Prefer callType; fall back to UPPERCASE category
     const title = (a.callType && String(a.callType).trim())
       || ((a.category ? String(a.category).toUpperCase() : 'CRITICAL'));
 
@@ -583,7 +576,7 @@
     });
   }
 
-  /* ===== LINKIFY (auto-turn URLs into <a> tags) ===== */
+  /* ===== LINKIFY ===== */
   function linkifyElement(el) {
     if (!el) return;
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
@@ -591,14 +584,12 @@
     const textNodes = [];
     let n;
     while ((n = walker.nextNode())) {
-      // Skip text already inside an anchor
-      if (n.parentNode && n.parentNode.closest('a')) continue;
+      if (n.parentNode && n.parentNode.closest('a')) continue; // skip text already in links
       textNodes.push(n);
     }
     textNodes.forEach(node => {
       const txt = node.nodeValue;
       if (!urlRe.test(txt)) return;
-
       const frag = document.createDocumentFragment();
       let last = 0;
       txt.replace(urlRe, (match, offset) => {
@@ -615,14 +606,9 @@
       node.parentNode.replaceChild(frag, node);
     });
   }
-
-  // Ensure any <a> inside these panes opens in a new tab (also solves contenteditable click)
   function ensureAnchorTargets(el) {
     if (!el) return;
-    el.querySelectorAll('a').forEach(a => {
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-    });
+    el.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
   }
 
   /* ===== Left Note Pad (user-editable) ===== */
@@ -641,15 +627,12 @@
       const saved = localStorage.getItem(BULLETIN_KEY);
       if (saved) bulletinEl.innerHTML = saved;
     } catch {}
-    // Make pasted/typed URLs clickable after load
     linkifyElement(bulletinEl);
     ensureAnchorTargets(bulletinEl);
     statusEl.textContent = '';
   }
-
   function bulletinSave() {
     try {
-      // Normalize links before save
       linkifyElement(bulletinEl);
       ensureAnchorTargets(bulletinEl);
       localStorage.setItem(BULLETIN_KEY, bulletinEl.innerHTML);
@@ -661,7 +644,6 @@
       statusEl.textContent = 'Save failed';
     }
   }
-
   function bulletinClear() {
     if (!confirm('Clear bulletin and remove saved copy?')) return;
     bulletinEl.innerHTML = '';
@@ -672,17 +654,11 @@
   function bulletinRevert() { bulletinLoad(); }
 
   bulletinEl.addEventListener('input', () => { bulletinDirty = true; });
-
-  // Make links clickable even inside contenteditable
   bulletinEl.addEventListener('click', (e) => {
     const a = e.target.closest('a');
-    if (a) {
-      e.preventDefault();
-      window.open(a.href, '_blank', 'noopener');
-    }
+    if (a) { e.preventDefault(); window.open(a.href, '_blank', 'noopener'); }
   });
 
-  // Link button (optional): create/wrap selection as link
   if (linkBtn) {
     linkBtn.addEventListener('click', () => {
       const sel = window.getSelection();
@@ -690,26 +666,18 @@
       const url = prompt('Enter URL (https://...)', defaultUrl);
       if (!url || url === 'https://') return;
       const safe = /^https?:\/\//i.test(url) ? url : 'https://' + url;
-
-      // Insert or wrap selection
       document.execCommand('createLink', false, safe);
-      // Ensure target/rel on created links
       ensureAnchorTargets(bulletinEl);
       bulletinDirty = true;
-      // Also turn any bare URLs nearby into anchors
       linkifyElement(bulletinEl);
     });
   }
-
   if (saveBtn)   saveBtn.addEventListener('click', bulletinSave);
   if (revertBtn) revertBtn.addEventListener('click', bulletinRevert);
   if (clearBtn)  clearBtn.addEventListener('click', bulletinClear);
-
   setInterval(() => { if (bulletinDirty) bulletinSave(); }, 10000);
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-      e.preventDefault(); bulletinSave();
-    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); bulletinSave(); }
   });
 
   /* ===== Right Board (code-controlled only) ===== */
@@ -720,7 +688,6 @@
       const saved = localStorage.getItem(BULLETIN_READ_KEY);
       if (saved) readEl.innerHTML = saved;
     } catch {}
-    // Linkify & wrap
     linkifyElement(readEl);
     ensureAnchorTargets(readEl);
   }
