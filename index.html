@@ -24,25 +24,33 @@
   .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: scroll 45s linear infinite; color: #ffcc00; line-height: 30px; }
   @keyframes scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
 
-  /* MAIN GRID */
+  /* MAIN GRID — locked proportions: top row 2/3, bottom row 1/3 */
   main {
     flex: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: 2fr 1fr;
+    grid-template-rows: 2fr 1fr;      /* <- 2:1 height split */
     gap: 10px;
     padding: 10px;
-    /* header(50) + critical(30) + ticker(30) = 110px */
-    height: calc(100vh - 110px);
+    height: calc(100vh - 110px);      /* header(50) + critical(30) + ticker(30) */
   }
 
-  /* Make sure Leaflet has real pixels to work with */
-  #alertMap { flex: 1 1 auto; min-height: 260px; width: 100%; }
-  .leaflet-container { width: 100%; height: 100%; }
+  /* Make embedded content fill their grid cells nicely */
+  .card { display: flex; flex-direction: column; min-height: 0; }
+  .card h2 { flex: 0 0 auto; margin: 0; padding: 6px 8px; border-bottom: 1px solid #333; }
 
-  /* Bulletins */
+  /* Content fillers */
+  .card > iframe,
+  .card .bulletin-body,
+  #alertMap {
+    flex: 1 1 auto;
+    min-height: 0;         /* needed so inner scrollers work inside flex */
+    width: 100%;
+  }
+  .card > iframe { border: none; }
+
+  /* Bulletin look */
   .bulletin-body {
-    height: 100%;
     overflow: auto;
     padding: 8px 10px;
     background: #1a1a1a;
@@ -62,7 +70,7 @@
   @media (max-width: 1024px) {
     main {
       grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: 2fr 1fr 1fr;
+      grid-template-rows: 2fr 1fr 1fr; /* top row still tallest */
     }
     .bulletin-card,
     .map-card,
@@ -71,22 +79,38 @@
   @media (max-width: 600px) {
     main {
       grid-template-columns: 1fr;
-      grid-template-rows: repeat(6, 1fr);
+      grid-template-rows: repeat(6, minmax(0, 1fr));
     }
     .card { grid-column: span 1; }
   }
-
-  /* Cards */
-  .card { display: flex; flex-direction: column; }
-  .card h2 { flex: 0 0 auto; }
-
-  /* Map container */
-  #alertMap { flex: 1 1 auto; min-height: 260px; width: 100%; }
 
   /* ===== Edit mode visuals (temporary only; no persistence) ===== */
   body.edit-mode .card { outline: 1px dashed #555; cursor: grab; }
   body.edit-mode .card:active { cursor: grabbing; }
   .card.dragging { opacity: 0.6; outline: 2px dashed #888; }
+
+  /* ===== Fullscreen overlay ===== */
+  body.fs-open { overflow: hidden; }
+  #fsBackdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 10000;
+  }
+  .card.is-fullscreen {
+    position: fixed;
+    inset: 10px;
+    z-index: 10001;
+    margin: 0;
+    max-width: none;
+    max-height: none;
+    width: auto;
+    height: calc(100vh - 20px);
+    border: 1px solid #333;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    background: #1a1a1a;
+  }
+  /* Make the two titles look clickable for fullscreen */
+  .click-fs { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -127,16 +151,13 @@
 
   <!-- Editable Note Pad (left of the map) -->
   <div class="card bulletin-card" data-card-id="note-pad">
-    <h2 style="display:flex;align-items:center;justify-content:space-between;">
-      <span>Note Pad</span>
-      <span class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;">
-        <button id="bulletinSave" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Save</button>
-        <button id="bulletinRevert" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Revert</button>
-        <button id="bulletinClear" style="background:#552222;color:#fff;border:1px solid #774444;border-radius:6px;padding:4px 8px;cursor:pointer;">Clear</button>
-        <span id="bulletinStatus" style="color:#aaa;font-size:12px;"></span>
-      </span>
-    </h2>
-
+    <h2 id="notePadTitle" class="click-fs" title="Click to toggle fullscreen">Note Pad</h2>
+    <div class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;padding:6px 8px 0;">
+      <button id="bulletinSave" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Save</button>
+      <button id="bulletinRevert" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Revert</button>
+      <button id="bulletinClear" style="background:#552222;color:#fff;border:1px solid #774444;border-radius:6px;padding:4px 8px;cursor:pointer;">Clear</button>
+      <span id="bulletinStatus" style="color:#aaa;font-size:12px;"></span>
+    </div>
     <div id="bulletin" class="bulletin-body" contenteditable="true">
       Welcome to the Nassau Alerts Command Center.
 
@@ -150,7 +171,7 @@
 
   <!-- Map (center) -->
   <div class="card map-card" data-card-id="map">
-    <h2>Alert Map</h2>
+    <h2 id="mapTitle" class="click-fs" title="Click to toggle fullscreen">Alert Map</h2>
     <div id="alertMap"></div>
   </div>
 
@@ -641,9 +662,7 @@
     statusEl.textContent = 'Cleared';
     setTimeout(() => (statusEl.textContent = ''), 2000);
   }
-  function bulletinRevert() {
-    bulletinLoad();
-  }
+  function bulletinRevert() { bulletinLoad(); }
   bulletinEl.addEventListener('input', () => { bulletinDirty = true; });
   saveBtn.addEventListener('click', bulletinSave);
   revertBtn.addEventListener('click', bulletinRevert);
@@ -735,10 +754,62 @@
     });
   }
   if (resetBtn) {
-    resetBtn.addEventListener('click', () => {
-      // Hard reset to your canonical layout
-      location.reload();
+    resetBtn.addEventListener('click', () => { location.reload(); });
+  }
+
+  /* ===== FULLSCREEN (Note Pad & Map) ===== */
+  const noteTitle = document.getElementById('notePadTitle');
+  const mapTitle  = document.getElementById('mapTitle');
+  let fsCard = null;     // currently fullscreen card
+  let fsBackdrop = null;
+
+  function enterFullscreen(card) {
+    if (fsCard) exitFullscreen(); // just in case
+    fsBackdrop = document.createElement('div');
+    fsBackdrop.id = 'fsBackdrop';
+    document.body.appendChild(fsBackdrop);
+    document.body.classList.add('fs-open');
+
+    card.classList.add('is-fullscreen');
+    fsCard = card;
+
+    fsBackdrop.addEventListener('click', exitFullscreen, { once: true });
+    document.addEventListener('keydown', escListener);
+    // Map needs reflow if it's the map card
+    if (card.contains(mapEl) && typeof map?.invalidateSize === 'function') {
+      setTimeout(() => map.invalidateSize(), 80);
+    }
+  }
+  function escListener(e) {
+    if (e.key === 'Escape') exitFullscreen();
+  }
+  function exitFullscreen() {
+    if (!fsCard) return;
+    fsCard.classList.remove('is-fullscreen');
+    if (fsBackdrop && fsBackdrop.parentNode) fsBackdrop.parentNode.removeChild(fsBackdrop);
+    fsBackdrop = null;
+    document.body.classList.remove('fs-open');
+    document.removeEventListener('keydown', escListener);
+    // Reflow map on exit too
+    if (typeof map?.invalidateSize === 'function') {
+      setTimeout(() => map.invalidateSize(), 80);
+    }
+    fsCard = null;
+  }
+  function toggleFS(card) {
+    if (fsCard === card) exitFullscreen();
+    else enterFullscreen(card);
+  }
+
+  // Clickable titles
+  if (noteTitle) {
+    noteTitle.addEventListener('click', (e) => {
+      // ignore clicks on the toolbar below; title click only
+      toggleFS(noteTitle.closest('.card'));
     });
+  }
+  if (mapTitle) {
+    mapTitle.addEventListener('click', () => toggleFS(mapTitle.closest('.card')));
   }
 
   /* ===== Start everything ===== */
