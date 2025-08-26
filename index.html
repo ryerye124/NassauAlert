@@ -12,7 +12,7 @@
   header div { min-width: 150px; text-align: center; }
   .header-actions button { background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:6px 10px;cursor:pointer; }
 
-  /* CRITICAL BAR (between header and ticker) */
+  /* CRITICAL BAR */
   .critical-wrap { overflow: hidden; background: #4a0000; height: 30px; position: sticky; top: 50px; z-index: 9999; border-bottom: 1px solid #660000; }
   .critical { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 0 12px; color: #fff; line-height: 30px; font-weight: 700; letter-spacing: 0.2px; }
   .critical .chip { display: inline-flex; align-items: center; gap: 8px; background: #220000; padding: 3px 10px; border-radius: 999px; border: 1px solid #660000; }
@@ -33,21 +33,34 @@
     gap: 10px;
     padding: 10px;
     height: calc(100vh - 110px); /* header(50)+critical(30)+ticker(30) */
+    min-height: 0;
   }
 
   /* Cards & content sizing */
-  .card { display: flex; flex-direction: column; min-height: 0; }
+  .card { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
   .card h2 { flex: 0 0 auto; margin: 0; padding: 6px 8px; border-bottom: 1px solid #333; }
   .card > iframe,
   .card .bulletin-body,
   #alertMap { flex: 1 1 auto; min-height: 0; width: 100%; }
   .card > iframe { border: none; }
 
-  /* Bulletin look */
-  .bulletin-body { overflow: auto; padding: 8px 10px; background: #1a1a1a; border-radius: 8px; line-height: 1.35; white-space: pre-line; }
+  /* Bulletin look + WRAPPING (no grid stretch) */
+  .bulletin-body {
+    overflow: auto;
+    padding: 8px 10px;
+    background: #1a1a1a;
+    border-radius: 8px;
+    line-height: 1.35;
+    white-space: pre-wrap;             /* keep line breaks, allow wrapping */
+    overflow-wrap: anywhere;           /* wrap long words/URLs */
+    word-wrap: break-word;             /* legacy fallback */
+    word-break: break-word;            /* Safari/Chrome help */
+  }
+  .bulletin-body * {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
   .bulletin-body a { color: #ffcc00; text-decoration: underline; }
-  .bulletin-body ul { margin: 6px 0 6px 18px; }
-  .bulletin-body p { margin: 6px 0; }
 
   /* Map icon (SVG) for criticals */
   .leaflet-div-icon.crit-icon { background: transparent; border: none; }
@@ -121,9 +134,10 @@
   <div class="card bulletin-card" data-card-id="note-pad">
     <h2 class="click-fs">Note Pad</h2>
     <div class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;padding:6px 8px 0;">
-      <button id="bulletinSave" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Save</button>
+      <button id="bulletinSave"   style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Save</button>
       <button id="bulletinRevert" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Revert</button>
-      <button id="bulletinClear" style="background:#552222;color:#fff;border:1px solid #774444;border-radius:6px;padding:4px 8px;cursor:pointer;">Clear</button>
+      <button id="bulletinClear"  style="background:#552222;color:#fff;border:1px solid #774444;border-radius:6px;padding:4px 8px;cursor:pointer;">Clear</button>
+      <button id="bulletinLink"   style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Link</button>
       <span id="bulletinStatus" style="color:#aaa;font-size:12px;"></span>
     </div>
     <div id="bulletin" class="bulletin-body" contenteditable="true">
@@ -152,7 +166,7 @@
       LIRR/MTA: (718) 558-8204
       CHEM-TREC: (800) 424-9300
       Poison Control: (800) 222-1222
-      Hospital Avalibilty: https://docs.google.com/spreadsheets/d/1nJYeGR6hNn5gIzqTDmN7qvdqQzU7Z_vAmUCiq1XAjYE/edit?pli=1&gid=0#gid=0
+      Hospital Availability: https://docs.google.com/spreadsheets/d/1nJYeGR6hNn5gIzqTDmN7qvdqQzU7Z_vAmUCiq1XAjYE/edit?gid=0#gid=0
     </div>
   </div>
 </main>
@@ -183,10 +197,7 @@
     return Number.isNaN(ms) ? '—'
       : new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   };
-  function cacheBusted(url) {
-    const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}_cb=${Date.now()}`;
-  }
+  const cacheBusted = (url) => url + (url.includes('?') ? '&' : '?') + '_cb=' + Date.now();
 
   /* ===== CLOCKS ===== */
   function updateClocks() {
@@ -233,8 +244,8 @@
 
   /* ===== FEED ENDPOINTS ===== */
   const BASE_URL = 'https://script.google.com/macros/s/AKfycbwPPoh1MIUqw-D9DQh6CCk5cL001YUkKLYgL9QCPITBG7dLs3hVGqBR0XzqfQoKVgN8/exec';
-  const ALERTS_URL = `${BASE_URL}?limit=100`;                    // normal
-  const CRIT_URL   = `${BASE_URL}?channel=critical&limit=40`;   // critical
+  const ALERTS_URL = `${BASE_URL}?limit=100`;
+  const CRIT_URL   = `${BASE_URL}?channel=critical&limit=40`;
   const POLL_MS = 20000;
 
   /* ===== NORMAL FEED (ticker + map) ===== */
@@ -267,11 +278,9 @@
     ).addTo(markersLayer);
   }
   function makeFireMarker(lat, lng, a) {
-    const line1 = [(a.category || 'CRITICAL').toUpperCase(), (a.callType || '').toString().trim()]
-      .filter(Boolean).join(' • ');
+    const line1 = [(a.category || 'CRITICAL').toUpperCase(), (a.callType || '').toString().trim()].filter(Boolean).join(' • ');
     const line2 = [a.location || '', a.city || '', a.state || 'NY'].filter(Boolean).join(', ');
     const line3 = fmtTime(a.eventTimestamp);
-
     return L.marker([lat, lng], { icon: fireIcon })
       .bindTooltip(`${line1}<br>${line2}<br>${line3}`, { direction: 'top', offset: [0, -8] })
       .addTo(markersLayer);
@@ -384,7 +393,6 @@
   const criticalBar = document.getElementById('criticalBar');
   const critLive = new Map(); // id -> { el, marker, expiresAt }
 
-  // <<< NEW: chip text = "callType - address - time"
   function makeCritChip(a) {
     const dot = document.createElement('span');
     dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
@@ -405,7 +413,6 @@
     return chip;
   }
 
-  // Robust fetch + normalize for critical feed
   async function fetchCriticalOnce() {
     const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP '+res.status);
@@ -568,42 +575,158 @@
     });
   }
 
+  /* ===== LINKIFY (auto-turn URLs into <a> tags) ===== */
+  function linkifyElement(el) {
+    if (!el) return;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    const urlRe = /\bhttps?:\/\/[^\s<>"')]+/gi;
+    const textNodes = [];
+    let n;
+    while ((n = walker.nextNode())) {
+      // Skip text already inside an anchor
+      if (n.parentNode && n.parentNode.closest('a')) continue;
+      textNodes.push(n);
+    }
+    textNodes.forEach(node => {
+      const txt = node.nodeValue;
+      if (!urlRe.test(txt)) return;
+
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      txt.replace(urlRe, (match, offset) => {
+        if (offset > last) frag.appendChild(document.createTextNode(txt.slice(last, offset)));
+        const a = document.createElement('a');
+        a.href = match;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = match;
+        frag.appendChild(a);
+        last = offset + match.length;
+      });
+      if (last < txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+
+  // Ensure any <a> inside these panes opens in a new tab (also solves contenteditable click)
+  function ensureAnchorTargets(el) {
+    if (!el) return;
+    el.querySelectorAll('a').forEach(a => {
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+    });
+  }
+
   /* ===== Left Note Pad (user-editable) ===== */
   const BULLETIN_KEY = 'bulletin_text_v1';
   const bulletinEl   = document.getElementById('bulletin');
   const saveBtn      = document.getElementById('bulletinSave');
   const revertBtn    = document.getElementById('bulletinRevert');
   const clearBtn     = document.getElementById('bulletinClear');
+  const linkBtn      = document.getElementById('bulletinLink');
   const statusEl     = document.getElementById('bulletinStatus');
 
   let bulletinDirty = false;
-  function bulletinLoad() { try { const saved = localStorage.getItem(BULLETIN_KEY); if (saved) bulletinEl.innerHTML = saved; } catch {} statusEl.textContent=''; }
+
+  function bulletinLoad() {
+    try {
+      const saved = localStorage.getItem(BULLETIN_KEY);
+      if (saved) bulletinEl.innerHTML = saved;
+    } catch {}
+    // Make pasted/typed URLs clickable after load
+    linkifyElement(bulletinEl);
+    ensureAnchorTargets(bulletinEl);
+    statusEl.textContent = '';
+  }
+
   function bulletinSave() {
     try {
+      // Normalize links before save
+      linkifyElement(bulletinEl);
+      ensureAnchorTargets(bulletinEl);
       localStorage.setItem(BULLETIN_KEY, bulletinEl.innerHTML);
       bulletinDirty = false;
       const t = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
       statusEl.textContent = `Saved ${t}`;
       setTimeout(() => (statusEl.textContent = ''), 3000);
-    } catch { statusEl.textContent = 'Save failed'; }
+    } catch {
+      statusEl.textContent = 'Save failed';
+    }
   }
-  function bulletinClear() { if (!confirm('Clear bulletin and remove saved copy?')) return; bulletinEl.innerHTML = ''; try { localStorage.removeItem(BULLETIN_KEY); } catch {} statusEl.textContent='Cleared'; setTimeout(()=>statusEl.textContent='',2000); }
+
+  function bulletinClear() {
+    if (!confirm('Clear bulletin and remove saved copy?')) return;
+    bulletinEl.innerHTML = '';
+    try { localStorage.removeItem(BULLETIN_KEY); } catch {}
+    statusEl.textContent = 'Cleared';
+    setTimeout(() => (statusEl.textContent = ''), 2000);
+  }
   function bulletinRevert() { bulletinLoad(); }
+
   bulletinEl.addEventListener('input', () => { bulletinDirty = true; });
-  saveBtn.addEventListener('click', bulletinSave);
-  revertBtn.addEventListener('click', bulletinRevert);
-  clearBtn.addEventListener('click', bulletinClear);
+
+  // Make links clickable even inside contenteditable
+  bulletinEl.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (a) {
+      e.preventDefault();
+      window.open(a.href, '_blank', 'noopener');
+    }
+  });
+
+  // Link button (optional): create/wrap selection as link
+  if (linkBtn) {
+    linkBtn.addEventListener('click', () => {
+      const sel = window.getSelection();
+      const defaultUrl = 'https://';
+      const url = prompt('Enter URL (https://...)', defaultUrl);
+      if (!url || url === 'https://') return;
+      const safe = /^https?:\/\//i.test(url) ? url : 'https://' + url;
+
+      // Insert or wrap selection
+      document.execCommand('createLink', false, safe);
+      // Ensure target/rel on created links
+      ensureAnchorTargets(bulletinEl);
+      bulletinDirty = true;
+      // Also turn any bare URLs nearby into anchors
+      linkifyElement(bulletinEl);
+    });
+  }
+
+  if (saveBtn)   saveBtn.addEventListener('click', bulletinSave);
+  if (revertBtn) revertBtn.addEventListener('click', bulletinRevert);
+  if (clearBtn)  clearBtn.addEventListener('click', bulletinClear);
+
   setInterval(() => { if (bulletinDirty) bulletinSave(); }, 10000);
-  document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); bulletinSave(); } });
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault(); bulletinSave();
+    }
+  });
 
   /* ===== Right Board (code-controlled only) ===== */
   const BULLETIN_READ_KEY = 'bulletin_read_text_v1';
   const readEl = document.getElementById('bulletinRead');
-  function readBoardLoad() { try { const saved = localStorage.getItem(BULLETIN_READ_KEY); if (saved) readEl.innerHTML = saved; } catch {} }
-  function setReadBoard(html) { try { localStorage.setItem(BULLETIN_READ_KEY, html); readEl.innerHTML = html; } catch {} }
+  function readBoardLoad() {
+    try {
+      const saved = localStorage.getItem(BULLETIN_READ_KEY);
+      if (saved) readEl.innerHTML = saved;
+    } catch {}
+    // Linkify & wrap
+    linkifyElement(readEl);
+    ensureAnchorTargets(readEl);
+  }
+  function setReadBoard(html) {
+    try {
+      localStorage.setItem(BULLETIN_READ_KEY, html);
+      readEl.innerHTML = html;
+      linkifyElement(readEl);
+      ensureAnchorTargets(readEl);
+    } catch {}
+  }
   window.setReadBoard = setReadBoard;
 
-  /* ===== TEMPORARY LAYOUT DRAG (no persistence) ===== */
+  /* ===== TEMP LAYOUT DRAG (no persistence) ===== */
   const mainEl = document.querySelector('main');
   const editBtn = document.getElementById('editLayoutBtn');
   const resetBtn = document.getElementById('resetLayoutBtn');
