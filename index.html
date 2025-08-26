@@ -24,23 +24,22 @@
   @keyframes scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
 
   /* MAIN GRID */
-main {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: 2fr 1fr;
-  gap: 10px;
-  padding: 10px;
-  /* header(50) + critical(30) + ticker(30) = 110px */
-  height: calc(100vh - 110px);
-}
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: 2fr 1fr;
+    gap: 10px;
+    padding: 10px;
+    /* header(50) + critical(30) + ticker(30) = 110px */
+    height: calc(100vh - 110px);
+  }
 
-/* Make sure Leaflet has real pixels to work with */
-#alertMap { flex: 1 1 auto; min-height: 260px; width: 100%; }
-.leaflet-container { width: 100%; height: 100%; }
+  /* Make sure Leaflet has real pixels to work with */
+  #alertMap { flex: 1 1 auto; min-height: 260px; width: 100%; }
+  .leaflet-container { width: 100%; height: 100%; }
 
-
-  /* Bulletin card (replaces radio feeds) */
+  /* Bulletins */
   .bulletin-body {
     height: 100%;
     overflow: auto;
@@ -48,7 +47,7 @@ main {
     background: #1a1a1a;
     border-radius: 8px;
     line-height: 1.35;
-    white-space: pre-line;       /* keep your line breaks */
+    white-space: pre-line;
   }
   .bulletin-body a { color: #ffcc00; text-decoration: underline; }
   .bulletin-body ul { margin: 6px 0 6px 18px; }
@@ -58,28 +57,30 @@ main {
   .leaflet-div-icon.crit-icon { background: transparent; border: none; }
   .crit-icon svg { width: 28px; height: 34px; display: block; filter: drop-shadow(0 0 2px #000); }
 
-  /* RESPONSIVE */
+  /* RESPONSIVE (class-based) */
   @media (max-width: 1024px) {
-    main { grid-template-columns: repeat(2, 1fr); grid-template-rows: 2fr 1fr 1fr; }
-    .card:nth-child(4) { grid-column: span 2; } /* bulletin */
-    .card:nth-child(5) { grid-column: span 2; } /* map */
+    main {
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: 2fr 1fr 1fr;
+    }
+    .bulletin-card,
+    .map-card,
+    .bulletin-read-card { grid-column: span 2; }
   }
   @media (max-width: 600px) {
-    main { grid-template-columns: 1fr; grid-template-rows: repeat(5, 1fr); }
+    main {
+      grid-template-columns: 1fr;
+      grid-template-rows: repeat(6, 1fr);
+    }
     .card { grid-column: span 1; }
   }
-  /* Make map card a column so the map fills under the title */
-.card { display: flex; flex-direction: column; }
 
-.card h2 { flex: 0 0 auto; }
+  /* Cards */
+  .card { display: flex; flex-direction: column; }
+  .card h2 { flex: 0 0 auto; }
 
-/* The map needs an explicit height to render */
-#alertMap {
-  flex: 1 1 auto;      /* fill the remaining space in the card */
-  min-height: 260px;   /* safety for smaller screens */
-  width: 100%;
-}
-
+  /* Map container */
+  #alertMap { flex: 1 1 auto; min-height: 260px; width: 100%; }
 </style>
 </head>
 <body>
@@ -114,34 +115,43 @@ main {
     <iframe src="https://www.mapofire.com/state/new-york"></iframe>
   </div>
 
-  <!-- REPLACED: Radio card -> Bulletin card -->
- <div class="card">
-  <h2 style="display:flex;align-items:center;justify-content:space-between;">
-    <span>Note Pad</span>
-    <span class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;">
-      <button id="bulletinSave" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Save</button>
-      <button id="bulletinRevert" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Revert</button>
-      <button id="bulletinClear" style="background:#552222;color:#fff;border:1px solid #774444;border-radius:6px;padding:4px 8px;cursor:pointer;">Clear</button>
-      <span id="bulletinStatus" style="color:#aaa;font-size:12px;"></span>
-    </span>
-  </h2>
+  <!-- Editable Note Pad (left of the map) -->
+  <div class="card bulletin-card">
+    <h2 style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Note Pad</span>
+      <span class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;">
+        <button id="bulletinSave" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Save</button>
+        <button id="bulletinRevert" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Revert</button>
+        <button id="bulletinClear" style="background:#552222;color:#fff;border:1px solid #774444;border-radius:6px;padding:4px 8px;cursor:pointer;">Clear</button>
+        <span id="bulletinStatus" style="color:#aaa;font-size:12px;"></span>
+      </span>
+    </h2>
 
-  <!-- Make this editable -->
-  <div id="bulletin" class="bulletin-body" contenteditable="true">
-    Welcome to the Nassau Alerts Command Center.
+    <div id="bulletin" class="bulletin-body" contenteditable="true">
+      Welcome to the Nassau Alerts Command Center.
 
-    • This space is editable by you! Use it for notes, or reminders.
-    • You can put links here: https://www.weather.gov/
-    • Basic formatting is supported (line breaks, lists).
+      • This space is editable by you! Use it for notes, or reminders.
+      • You can put links here: https://www.weather.gov/
+      • Basic formatting is supported (line breaks, lists).
 
-    Stay safe.
+      Stay safe.
+    </div>
   </div>
-</div>
 
-
-  <div class="card">
+  <!-- Map (center) -->
+  <div class="card map-card">
     <h2>Alert Map</h2>
     <div id="alertMap"></div>
+  </div>
+
+  <!-- Independent, code-controlled board (right of the map) -->
+  <div class="card bulletin-read-card">
+    <h2>Right-Side Board</h2>
+    <div id="bulletinRead" class="bulletin-body" aria-readonly="true">
+      <!-- Default content if nothing has been set yet -->
+      Department contacts, SOP refreshers, and radio codes live here.
+      Update via code using setReadBoard(...).
+    </div>
   </div>
 </main>
 
@@ -187,22 +197,21 @@ main {
   setInterval(updateClocks, 1000);
   updateClocks();
 
-/* ===== MAP ===== */
-const map = L.map('alertMap').setView([40.7, -73.6], 10);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-const markersLayer = L.layerGroup().addTo(map);
+  /* ===== MAP ===== */
+  const map = L.map('alertMap').setView([40.7, -73.6], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  const markersLayer = L.layerGroup().addTo(map);
 
-/* NEW: help Safari/Firefox measure the map after layout settles */
-const mapEl = document.getElementById('alertMap');
-requestAnimationFrame(() => map.invalidateSize());     // first paint
-setTimeout(() => map.invalidateSize(), 250);           // after fonts/layout
-map.on('load', () => map.invalidateSize());            // once tiles kick in
-window.addEventListener('resize', () => map.invalidateSize());
-
-if ('ResizeObserver' in window) {
-  const ro = new ResizeObserver(() => map.invalidateSize());
-  ro.observe(mapEl);
-}
+  /* Help Safari/Firefox measure the map after layout settles */
+  const mapEl = document.getElementById('alertMap');
+  requestAnimationFrame(() => map.invalidateSize());
+  setTimeout(() => map.invalidateSize(), 250);
+  map.on('load', () => map.invalidateSize());
+  window.addEventListener('resize', () => map.invalidateSize());
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    ro.observe(mapEl);
+  }
 
   // Critical alerts use a crisp SVG flame marker
   const fireIcon = L.divIcon({
@@ -584,78 +593,89 @@ if ('ResizeObserver' in window) {
       curr.marker = marker;
     });
   }
-// ===== Bulletin: local (browser) storage =====
-const BULLETIN_KEY = 'bulletin_text_v1';
-const bulletinEl = document.getElementById('bulletin');
-const saveBtn    = document.getElementById('bulletinSave');
-const revertBtn  = document.getElementById('bulletinRevert');
-const clearBtn   = document.getElementById('bulletinClear');
-const statusEl   = document.getElementById('bulletinStatus');
 
-let bulletinDirty = false;
+  /* ===== Left Note Pad (user-editable, with UI) ===== */
+  const BULLETIN_KEY = 'bulletin_text_v1';
+  const bulletinEl   = document.getElementById('bulletin');
+  const saveBtn      = document.getElementById('bulletinSave');
+  const revertBtn    = document.getElementById('bulletinRevert');
+  const clearBtn     = document.getElementById('bulletinClear');
+  const statusEl     = document.getElementById('bulletinStatus');
 
-function bulletinLoad() {
-  try {
-    const saved = localStorage.getItem(BULLETIN_KEY);
-    if (saved) bulletinEl.innerHTML = saved;
-  } catch {}
-  statusEl.textContent = '';
-}
+  let bulletinDirty = false;
 
-function bulletinSave() {
-  try {
-    localStorage.setItem(BULLETIN_KEY, bulletinEl.innerHTML);
-    bulletinDirty = false;
-    const t = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
-    statusEl.textContent = `Saved ${t}`;
-    setTimeout(() => (statusEl.textContent = ''), 3000);
-  } catch (e) {
-    statusEl.textContent = 'Save failed';
+  function bulletinLoad() {
+    try {
+      const saved = localStorage.getItem(BULLETIN_KEY);
+      if (saved) bulletinEl.innerHTML = saved;
+    } catch {}
+    statusEl.textContent = '';
   }
-}
-
-function bulletinClear() {
-  if (!confirm('Clear bulletin and remove saved copy?')) return;
-  bulletinEl.innerHTML = '';
-  try { localStorage.removeItem(BULLETIN_KEY); } catch {}
-  statusEl.textContent = 'Cleared';
-  setTimeout(() => (statusEl.textContent = ''), 2000);
-}
-
-function bulletinRevert() {
-  bulletinLoad();
-}
-
-// Events
-bulletinEl.addEventListener('input', () => { bulletinDirty = true; });
-
-// Buttons
-saveBtn.addEventListener('click', bulletinSave);
-revertBtn.addEventListener('click', bulletinRevert);
-clearBtn.addEventListener('click', bulletinClear);
-
-// Auto-save every 10s if changed
-setInterval(() => { if (bulletinDirty) bulletinSave(); }, 10000);
-
-// Cmd/Ctrl+S to save
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-    e.preventDefault();
-    bulletinSave();
+  function bulletinSave() {
+    try {
+      localStorage.setItem(BULLETIN_KEY, bulletinEl.innerHTML);
+      bulletinDirty = false;
+      const t = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+      statusEl.textContent = `Saved ${t}`;
+      setTimeout(() => (statusEl.textContent = ''), 3000);
+    } catch (e) {
+      statusEl.textContent = 'Save failed';
+    }
   }
-});
+  function bulletinClear() {
+    if (!confirm('Clear bulletin and remove saved copy?')) return;
+    bulletinEl.innerHTML = '';
+    try { localStorage.removeItem(BULLETIN_KEY); } catch {}
+    statusEl.textContent = 'Cleared';
+    setTimeout(() => (statusEl.textContent = ''), 2000);
+  }
+  function bulletinRevert() {
+    bulletinLoad();
+  }
+  bulletinEl.addEventListener('input', () => { bulletinDirty = true; });
+  saveBtn.addEventListener('click', bulletinSave);
+  revertBtn.addEventListener('click', bulletinRevert);
+  clearBtn.addEventListener('click', bulletinClear);
+  setInterval(() => { if (bulletinDirty) bulletinSave(); }, 10000);
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      bulletinSave();
+    }
+  });
 
-// Load any saved content on page load
-bulletinLoad();
+  /* ===== Right Board (independent, code-controlled only) ===== */
+  const BULLETIN_READ_KEY = 'bulletin_read_text_v1';
+  const readEl = document.getElementById('bulletinRead');
 
-  /* ===== Start both pollers ===== */
+  // Load right board from storage (or keep default HTML in the page)
+  function readBoardLoad() {
+    try {
+      const saved = localStorage.getItem(BULLETIN_READ_KEY);
+      if (saved) readEl.innerHTML = saved;
+    } catch {}
+  }
+
+  // Dev helper: update the right board ONLY via code (no UI on the page).
+  // Usage (in code or console): setReadBoard('<strong>Your HTML</strong>')
+  function setReadBoard(html) {
+    try {
+      localStorage.setItem(BULLETIN_READ_KEY, html);
+      readEl.innerHTML = html;
+    } catch {}
+  }
+  // Expose helper for console use if needed:
+  window.setReadBoard = setReadBoard;
+
+  /* ===== Start everything ===== */
   function init() {
-    startPolling();                   // normal feed
-    setInterval(tickCritical, 15000); // critical feed every 15s
+    bulletinLoad();     // left-board load
+    readBoardLoad();    // right-board load (no mirroring)
+    startPolling();     // normal feed
+    setInterval(tickCritical, 15000); // critical feed
     tickCritical();
   }
   init();
 </script>
 </body>
 </html>
-
