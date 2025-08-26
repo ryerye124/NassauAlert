@@ -29,22 +29,20 @@
     flex: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: 2fr 1fr;      /* <- 2:1 height split */
+    grid-template-rows: 2fr 1fr;      /* 2:1 height split */
     gap: 10px;
     padding: 10px;
     height: calc(100vh - 110px);      /* header(50) + critical(30) + ticker(30) */
   }
 
-  /* Make embedded content fill their grid cells nicely */
+  /* Cards & content sizing */
   .card { display: flex; flex-direction: column; min-height: 0; }
   .card h2 { flex: 0 0 auto; margin: 0; padding: 6px 8px; border-bottom: 1px solid #333; }
-
-  /* Content fillers */
   .card > iframe,
   .card .bulletin-body,
   #alertMap {
     flex: 1 1 auto;
-    min-height: 0;         /* needed so inner scrollers work inside flex */
+    min-height: 0;
     width: 100%;
   }
   .card > iframe { border: none; }
@@ -109,7 +107,7 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     background: #1a1a1a;
   }
-  /* Make the two titles look clickable for fullscreen */
+  /* Clickable titles for fullscreen */
   .click-fs { cursor: pointer; }
 </style>
 </head>
@@ -151,7 +149,7 @@
 
   <!-- Editable Note Pad (left of the map) -->
   <div class="card bulletin-card" data-card-id="note-pad">
-    <h2 id="notePadTitle" class="click-fs" title="Click to toggle fullscreen">Note Pad</h2>
+    <h2 class="click-fs" title="Click to toggle fullscreen">Note Pad</h2>
     <div class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;padding:6px 8px 0;">
       <button id="bulletinSave" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Save</button>
       <button id="bulletinRevert" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Revert</button>
@@ -171,13 +169,13 @@
 
   <!-- Map (center) -->
   <div class="card map-card" data-card-id="map">
-    <h2 id="mapTitle" class="click-fs" title="Click to toggle fullscreen">Alert Map</h2>
+    <h2 class="click-fs" title="Click to toggle fullscreen">Alert Map</h2>
     <div id="alertMap"></div>
   </div>
 
   <!-- Independent, code-controlled board (right of the map) -->
   <div class="card bulletin-read-card" data-card-id="right-board">
-    <h2>Quick Links and Numbers</h2>
+    <h2 class="click-fs" title="Click to toggle fullscreen">Quick Links and Numbers</h2>
     <div id="bulletinRead" class="bulletin-body" aria-readonly="true">
       Fire-Com: (516) 573-9800
       Med-Com: (516) 572-6259
@@ -757,75 +755,58 @@
     resetBtn.addEventListener('click', () => { location.reload(); });
   }
 
-// ===== FULLSCREEN (all cards) =====
-let fsCard = null;     // currently fullscreen card
-let fsBackdrop = null;
-const mapEl = document.getElementById('alertMap'); // already exists earlier
+  // ===== FULLSCREEN (all cards) =====
+  let fsCard = null;     // currently fullscreen card
+  let fsBackdrop = null;
+  function enterFullscreen(card) {
+    if (fsCard) exitFullscreen(); // safety
+    fsBackdrop = document.createElement('div');
+    fsBackdrop.id = 'fsBackdrop';
+    document.body.appendChild(fsBackdrop);
+    document.body.classList.add('fs-open');
 
-function enterFullscreen(card) {
-  if (fsCard) exitFullscreen(); // safety
-  fsBackdrop = document.createElement('div');
-  fsBackdrop.id = 'fsBackdrop';
-  document.body.appendChild(fsBackdrop);
-  document.body.classList.add('fs-open');
+    card.classList.add('is-fullscreen');
+    fsCard = card;
 
-  card.classList.add('is-fullscreen');
-  fsCard = card;
+    // Outside click exits
+    fsBackdrop.addEventListener('click', exitFullscreen, { once: true });
+    // Esc exits
+    document.addEventListener('keydown', escListener);
 
-  // Outside click exits
-  fsBackdrop.addEventListener('click', exitFullscreen, { once: true });
-  // Esc exits
-  document.addEventListener('keydown', escListener);
-
-  // If the fullscreen card contains the Leaflet map, reflow it
-  if (card.contains(mapEl) && typeof map?.invalidateSize === 'function') {
-    setTimeout(() => map.invalidateSize(), 80);
+    // If the fullscreen card contains the Leaflet map, reflow it
+    if (card.contains(mapEl) && typeof map?.invalidateSize === 'function') {
+      setTimeout(() => map.invalidateSize(), 80);
+    }
   }
-}
-
-function escListener(e) {
-  if (e.key === 'Escape') exitFullscreen();
-}
-
-function exitFullscreen() {
-  if (!fsCard) return;
-  fsCard.classList.remove('is-fullscreen');
-  if (fsBackdrop && fsBackdrop.parentNode) fsBackdrop.parentNode.removeChild(fsBackdrop);
-  fsBackdrop = null;
-  document.body.classList.remove('fs-open');
-  document.removeEventListener('keydown', escListener);
-
-  if (typeof map?.invalidateSize === 'function') {
-    setTimeout(() => map.invalidateSize(), 80);
+  function escListener(e) {
+    if (e.key === 'Escape') exitFullscreen();
   }
-  fsCard = null;
-}
+  function exitFullscreen() {
+    if (!fsCard) return;
+    fsCard.classList.remove('is-fullscreen');
+    if (fsBackdrop && fsBackdrop.parentNode) fsBackdrop.parentNode.removeChild(fsBackdrop);
+    fsBackdrop = null;
+    document.body.classList.remove('fs-open');
+    document.removeEventListener('keydown', escListener);
 
-function toggleFS(card) {
-  if (fsCard === card) exitFullscreen();
-  else enterFullscreen(card);
-}
-
-// Make ALL card titles clickable for fullscreen
-document.querySelectorAll('main .card > h2').forEach(h2 => {
-  h2.classList.add('click-fs');              // gives the pointer cursor
-  h2.addEventListener('click', (e) => {
-    const card = h2.closest('.card');
-    if (!card) return;
-    toggleFS(card);
-  });
-});
-  
-  // Clickable titles
-  if (noteTitle) {
-    noteTitle.addEventListener('click', (e) => {
-      // ignore clicks on the toolbar below; title click only
-      toggleFS(noteTitle.closest('.card'));
+    if (typeof map?.invalidateSize === 'function') {
+      setTimeout(() => map.invalidateSize(), 80);
+    }
+    fsCard = null;
+  }
+  function toggleFS(card) {
+    if (fsCard === card) exitFullscreen();
+    else enterFullscreen(card);
+  }
+  // Make ALL card titles clickable for fullscreen
+  document.querySelectorAll('main .card > h2').forEach(h2 => {
+    h2.classList.add('click-fs');
+    h2.addEventListener('click', () => {
+      const card = h2.closest('.card');
+      if (!card) return;
+      toggleFS(card);
     });
-  }
-  if (mapTitle) {
-    mapTitle.addEventListener('click', () => toggleFS(mapTitle.closest('.card')));
-  }
+  });
 
   /* ===== Start everything ===== */
   function init() {
@@ -839,3 +820,4 @@ document.querySelectorAll('main .card > h2').forEach(h2 => {
 </script>
 </body>
 </html>
+
