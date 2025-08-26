@@ -301,11 +301,13 @@
     ).addTo(markersLayer);
   }
   function makeFireMarker(lat, lng, a) {
+    const line1 = [(a.category || 'CRITICAL').toUpperCase(), (a.callType || '').toString().trim()]
+      .filter(Boolean).join(' • ');
+    const line2 = [a.location || '', a.city ? a.city : '', a.state ? a.state : ''].filter(Boolean).join(', ');
+    const line3 = fmtTime(a.eventTimestamp);
+
     return L.marker([lat, lng], { icon: fireIcon })
-      .bindTooltip(
-        `${(a.category||'CRITICAL').toUpperCase()}<br>${a.location||''}${a.city? ', '+a.city:''}<br>${fmtTime(a.eventTimestamp)}`,
-        { direction: 'top', offset: [0, -8] }
-      )
+      .bindTooltip(`${line1}<br>${line2}<br>${line3}`, { direction: 'top', offset: [0, -8] })
       .addTo(markersLayer);
   }
   function cleanupExpired() {
@@ -333,6 +335,7 @@
       callType: r.callType,
       location: r.location,
       city: r.city,
+      state: r.state || 'NY',
       eventTimestamp: r.eventTimestamp,
       lat: r.lat != null ? Number(r.lat) : null,
       lng: r.lng != null ? Number(r.lng) : null
@@ -423,12 +426,14 @@
     const dot = document.createElement('span');
     dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
     const txt = document.createElement('span');
+
     const parts = [
       (a.category || 'CRITICAL').toUpperCase(),
-      (a.callType || '').trim(),
-      `${a.location || ''}${a.city ? ', ' + a.city : ''}`,
+      (a.callType || '').toString().trim(),
+      [a.location || '', a.city ? a.city : '', a.state ? a.state : ''].filter(Boolean).join(', '),
       fmtTime(a.eventTimestamp)
     ].filter(Boolean);
+
     txt.textContent = parts.join(' • ');
     const chip = document.createElement('span');
     chip.className = 'chip';
@@ -440,16 +445,23 @@
     const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP '+res.status);
     const json = await res.json();
-    return (json.results || []).map(r => ({
-      id: r.uniqueKey || `${r.eventTimestamp||''}-${r.location||''}`,
-      category: r.category,
-      callType: r.callType,
-      location: r.location,
-      city: r.city,
-      eventTimestamp: r.eventTimestamp,
-      lat: r.lat != null ? Number(r.lat) : null,
-      lng: r.lng != null ? Number(r.lng) : null
-    })).filter(x => x.eventTimestamp);
+
+    const items = (json.results || []).map(r => {
+      const eventTimestamp = r.eventTimestamp || r.timestamp || r.time || r.receivedAt || r.createdAt || new Date().toISOString();
+      return {
+        id: r.uniqueKey || r.id || `${eventTimestamp || ''}-${r.location || ''}`,
+        category: r.category || 'CRITICAL',
+        callType: r.callType || '',
+        location: r.location || '',
+        city: r.city || '',
+        state: r.state || 'NY',
+        eventTimestamp,
+        lat: (r.lat != null ? Number(r.lat) : (r.latitude != null ? Number(r.latitude) : null)),
+        lng: (r.lng != null ? Number(r.lng) : (r.lon != null ? Number(r.lon) : (r.longitude != null ? Number(r.longitude) : null)))
+      };
+    }).filter(x => x.eventTimestamp);
+
+    return items;
   }
 
   function cleanupCritical() {
@@ -596,10 +608,10 @@
     const entry = live.get(id);
     if (!entry) return;
     if ((entry.expiresAt - Date.now()) < 30000) return;
-    const addr = `${a.location || ''}${a.city ? ', '+a.city : ''}, NY`.trim();
-    if (!addr || addr === ', NY') return;
-    const cacheKey = addr.toLowerCase();
-    enqueueGeocode(cacheKey, addr, (lat, lng) => {
+    const addrParts = [a.location || '', a.city || '', a.state || 'NY'].filter(Boolean).join(', ');
+    if (!a.location) return;
+    const cacheKey = addrParts.toLowerCase();
+    enqueueGeocode(cacheKey, addrParts, (lat, lng) => {
       if (lat == null || lng == null) return;
       const curr = live.get(id);
       if (!curr || curr.expiresAt <= Date.now()) return;
@@ -613,9 +625,15 @@
     const entry = critLive.get(id);
     if (!entry) return;
     if ((entry.expiresAt - Date.now()) < 30000) return;
-    const addr = `${a.location || ''}${a.city ? ', '+a.city : ''}, NY`.trim();
-    if (!addr || addr === ', NY') return;
-    const cacheKey = 'crit:'+addr.toLowerCase();
+
+    // Build robust address from location + city + state (defaults to NY)
+    const base = a.location || '';
+    const city = a.city || '';
+    const state = a.state || 'NY';
+    if (!base) return; // need at least a street or place
+    const addr = [base, city, state].filter(Boolean).join(', ');
+
+    const cacheKey = 'crit:' + addr.toLowerCase();
     enqueueGeocode(cacheKey, addr, (lat, lng) => {
       if (lat == null || lng == null) return;
       const curr = critLive.get(id);
@@ -778,9 +796,7 @@
       setTimeout(() => map.invalidateSize(), 80);
     }
   }
-  function escListener(e) {
-    if (e.key === 'Escape') exitFullscreen();
-  }
+  function escListener(e) { if (e.key === 'Escape') exitFullscreen(); }
   function exitFullscreen() {
     if (!fsCard) return;
     fsCard.classList.remove('is-fullscreen');
@@ -794,11 +810,7 @@
     }
     fsCard = null;
   }
-  function toggleFS(card) {
-    if (fsCard === card) exitFullscreen();
-    else enterFullscreen(card);
-  }
-  // Make ALL card titles clickable for fullscreen
+  function toggleFS(card) { if (fsCard === card) exitFullscreen(); else enterFullscreen(card); }
   document.querySelectorAll('main .card > h2').forEach(h2 => {
     h2.classList.add('click-fs');
     h2.addEventListener('click', () => {
@@ -820,4 +832,3 @@
 </script>
 </body>
 </html>
-
