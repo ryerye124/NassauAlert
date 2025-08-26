@@ -757,50 +757,65 @@
     resetBtn.addEventListener('click', () => { location.reload(); });
   }
 
-  /* ===== FULLSCREEN (Note Pad & Map) ===== */
-  const noteTitle = document.getElementById('notePadTitle');
-  const mapTitle  = document.getElementById('mapTitle');
-  let fsCard = null;     // currently fullscreen card
-  let fsBackdrop = null;
+// ===== FULLSCREEN (all cards) =====
+let fsCard = null;     // currently fullscreen card
+let fsBackdrop = null;
+const mapEl = document.getElementById('alertMap'); // already exists earlier
 
-  function enterFullscreen(card) {
-    if (fsCard) exitFullscreen(); // just in case
-    fsBackdrop = document.createElement('div');
-    fsBackdrop.id = 'fsBackdrop';
-    document.body.appendChild(fsBackdrop);
-    document.body.classList.add('fs-open');
+function enterFullscreen(card) {
+  if (fsCard) exitFullscreen(); // safety
+  fsBackdrop = document.createElement('div');
+  fsBackdrop.id = 'fsBackdrop';
+  document.body.appendChild(fsBackdrop);
+  document.body.classList.add('fs-open');
 
-    card.classList.add('is-fullscreen');
-    fsCard = card;
+  card.classList.add('is-fullscreen');
+  fsCard = card;
 
-    fsBackdrop.addEventListener('click', exitFullscreen, { once: true });
-    document.addEventListener('keydown', escListener);
-    // Map needs reflow if it's the map card
-    if (card.contains(mapEl) && typeof map?.invalidateSize === 'function') {
-      setTimeout(() => map.invalidateSize(), 80);
-    }
-  }
-  function escListener(e) {
-    if (e.key === 'Escape') exitFullscreen();
-  }
-  function exitFullscreen() {
-    if (!fsCard) return;
-    fsCard.classList.remove('is-fullscreen');
-    if (fsBackdrop && fsBackdrop.parentNode) fsBackdrop.parentNode.removeChild(fsBackdrop);
-    fsBackdrop = null;
-    document.body.classList.remove('fs-open');
-    document.removeEventListener('keydown', escListener);
-    // Reflow map on exit too
-    if (typeof map?.invalidateSize === 'function') {
-      setTimeout(() => map.invalidateSize(), 80);
-    }
-    fsCard = null;
-  }
-  function toggleFS(card) {
-    if (fsCard === card) exitFullscreen();
-    else enterFullscreen(card);
-  }
+  // Outside click exits
+  fsBackdrop.addEventListener('click', exitFullscreen, { once: true });
+  // Esc exits
+  document.addEventListener('keydown', escListener);
 
+  // If the fullscreen card contains the Leaflet map, reflow it
+  if (card.contains(mapEl) && typeof map?.invalidateSize === 'function') {
+    setTimeout(() => map.invalidateSize(), 80);
+  }
+}
+
+function escListener(e) {
+  if (e.key === 'Escape') exitFullscreen();
+}
+
+function exitFullscreen() {
+  if (!fsCard) return;
+  fsCard.classList.remove('is-fullscreen');
+  if (fsBackdrop && fsBackdrop.parentNode) fsBackdrop.parentNode.removeChild(fsBackdrop);
+  fsBackdrop = null;
+  document.body.classList.remove('fs-open');
+  document.removeEventListener('keydown', escListener);
+
+  if (typeof map?.invalidateSize === 'function') {
+    setTimeout(() => map.invalidateSize(), 80);
+  }
+  fsCard = null;
+}
+
+function toggleFS(card) {
+  if (fsCard === card) exitFullscreen();
+  else enterFullscreen(card);
+}
+
+// Make ALL card titles clickable for fullscreen
+document.querySelectorAll('main .card > h2').forEach(h2 => {
+  h2.classList.add('click-fs');              // gives the pointer cursor
+  h2.addEventListener('click', (e) => {
+    const card = h2.closest('.card');
+    if (!card) return;
+    toggleFS(card);
+  });
+});
+  
   // Clickable titles
   if (noteTitle) {
     noteTitle.addEventListener('click', (e) => {
