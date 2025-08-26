@@ -29,10 +29,10 @@
     flex: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: 2fr 1fr;      /* 2:1 height split */
+    grid-template-rows: 2fr 1fr;
     gap: 10px;
     padding: 10px;
-    height: calc(100vh - 110px);      /* header(50) + critical(30) + ticker(30) */
+    height: calc(100vh - 110px); /* header(50)+critical(30)+ticker(30) */
   }
 
   /* Cards & content sizing */
@@ -40,22 +40,11 @@
   .card h2 { flex: 0 0 auto; margin: 0; padding: 6px 8px; border-bottom: 1px solid #333; }
   .card > iframe,
   .card .bulletin-body,
-  #alertMap {
-    flex: 1 1 auto;
-    min-height: 0;
-    width: 100%;
-  }
+  #alertMap { flex: 1 1 auto; min-height: 0; width: 100%; }
   .card > iframe { border: none; }
 
   /* Bulletin look */
-  .bulletin-body {
-    overflow: auto;
-    padding: 8px 10px;
-    background: #1a1a1a;
-    border-radius: 8px;
-    line-height: 1.35;
-    white-space: pre-line;
-  }
+  .bulletin-body { overflow: auto; padding: 8px 10px; background: #1a1a1a; border-radius: 8px; line-height: 1.35; white-space: pre-line; }
   .bulletin-body a { color: #ffcc00; text-decoration: underline; }
   .bulletin-body ul { margin: 6px 0 6px 18px; }
   .bulletin-body p { margin: 6px 0; }
@@ -64,49 +53,30 @@
   .leaflet-div-icon.crit-icon { background: transparent; border: none; }
   .crit-icon svg { width: 28px; height: 34px; display: block; filter: drop-shadow(0 0 2px #000); }
 
-  /* RESPONSIVE (class-based) */
+  /* RESPONSIVE */
   @media (max-width: 1024px) {
-    main {
-      grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: 2fr 1fr 1fr; /* top row still tallest */
-    }
-    .bulletin-card,
-    .map-card,
-    .bulletin-read-card { grid-column: span 2; }
+    main { grid-template-columns: repeat(2, 1fr); grid-template-rows: 2fr 1fr 1fr; }
+    .bulletin-card, .map-card, .bulletin-read-card { grid-column: span 2; }
   }
   @media (max-width: 600px) {
-    main {
-      grid-template-columns: 1fr;
-      grid-template-rows: repeat(6, minmax(0, 1fr));
-    }
+    main { grid-template-columns: 1fr; grid-template-rows: repeat(6, minmax(0, 1fr)); }
     .card { grid-column: span 1; }
   }
 
-  /* ===== Edit mode visuals (temporary only; no persistence) ===== */
+  /* Edit mode visuals (temporary only; no persistence) */
   body.edit-mode .card { outline: 1px dashed #555; cursor: grab; }
   body.edit-mode .card:active { cursor: grabbing; }
   .card.dragging { opacity: 0.6; outline: 2px dashed #888; }
 
-  /* ===== Fullscreen overlay ===== */
+  /* Fullscreen overlay */
   body.fs-open { overflow: hidden; }
-  #fsBackdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 10000;
-  }
+  #fsBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; }
   .card.is-fullscreen {
-    position: fixed;
-    inset: 10px;
-    z-index: 10001;
-    margin: 0;
-    max-width: none;
-    max-height: none;
-    width: auto;
-    height: calc(100vh - 20px);
-    border: 1px solid #333;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-    background: #1a1a1a;
+    position: fixed; inset: 10px; z-index: 10001; margin: 0;
+    max-width: none; max-height: none; width: auto; height: calc(100vh - 20px);
+    border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.6); background: #1a1a1a;
   }
+
   /* Clickable titles for fullscreen */
   .click-fs { cursor: pointer; }
 </style>
@@ -133,23 +103,23 @@
 
 <main>
   <div class="card" data-card-id="radar">
-    <h2>Radar (NWS)</h2>
+    <h2 class="click-fs">Radar (NWS)</h2>
     <iframe src="https://radar.weather.gov/ridge/standard/NORTHEAST_loop.gif"></iframe>
   </div>
 
   <div class="card" data-card-id="smoke">
-    <h2>Fire & Smoke Map (NWS)</h2>
+    <h2 class="click-fs">Fire & Smoke Map (NWS)</h2>
     <iframe src="https://radar.weather.gov/"></iframe>
   </div>
 
   <div class="card" data-card-id="wildfire">
-    <h2>NY Wildfire Tracker</h2>
+    <h2 class="click-fs">NY Wildfire Tracker</h2>
     <iframe src="https://www.mapofire.com/state/new-york"></iframe>
   </div>
 
   <!-- Editable Note Pad (left of the map) -->
   <div class="card bulletin-card" data-card-id="note-pad">
-    <h2 class="click-fs" title="Click to toggle fullscreen">Note Pad</h2>
+    <h2 class="click-fs">Note Pad</h2>
     <div class="bulletin-toolbar" style="display:inline-flex;gap:8px;align-items:center;font-weight:normal;padding:6px 8px 0;">
       <button id="bulletinSave" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Save</button>
       <button id="bulletinRevert" style="background:#333;color:#fff;border:1px solid #555;border-radius:6px;padding:4px 8px;cursor:pointer;">Revert</button>
@@ -169,13 +139,13 @@
 
   <!-- Map (center) -->
   <div class="card map-card" data-card-id="map">
-    <h2 class="click-fs" title="Click to toggle fullscreen">Alert Map</h2>
+    <h2 class="click-fs">Alert Map</h2>
     <div id="alertMap"></div>
   </div>
 
   <!-- Independent, code-controlled board (right of the map) -->
   <div class="card bulletin-read-card" data-card-id="right-board">
-    <h2 class="click-fs" title="Click to toggle fullscreen">Quick Links and Numbers</h2>
+    <h2 class="click-fs">Quick Links and Numbers</h2>
     <div id="bulletinRead" class="bulletin-body" aria-readonly="true">
       Fire-Com: (516) 573-9800
       Med-Com: (516) 572-6259
@@ -209,8 +179,7 @@
   }
   const fmtTime = (v) => {
     const ms = typeof v === 'number' ? v : parseTs(v);
-    return Number.isNaN(ms)
-      ? '—'
+    return Number.isNaN(ms) ? '—'
       : new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   };
   function cacheBusted(url) {
@@ -233,16 +202,12 @@
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
   const markersLayer = L.layerGroup().addTo(map);
 
-  /* Help Safari/Firefox measure the map after layout settles */
   const mapEl = document.getElementById('alertMap');
   requestAnimationFrame(() => map.invalidateSize());
   setTimeout(() => map.invalidateSize(), 250);
   map.on('load', () => map.invalidateSize());
   window.addEventListener('resize', () => map.invalidateSize());
-  if ('ResizeObserver' in window) {
-    const ro = new ResizeObserver(() => map.invalidateSize());
-    ro.observe(mapEl);
-  }
+  if ('ResizeObserver' in window) new ResizeObserver(() => map.invalidateSize()).observe(mapEl);
 
   // Critical alerts use a crisp SVG flame marker
   const fireIcon = L.divIcon({
@@ -303,7 +268,7 @@
   function makeFireMarker(lat, lng, a) {
     const line1 = [(a.category || 'CRITICAL').toUpperCase(), (a.callType || '').toString().trim()]
       .filter(Boolean).join(' • ');
-    const line2 = [a.location || '', a.city ? a.city : '', a.state ? a.state : ''].filter(Boolean).join(', ');
+    const line2 = [a.location || '', a.city || '', a.state || 'NY'].filter(Boolean).join(', ');
     const line3 = fmtTime(a.eventTimestamp);
 
     return L.marker([lat, lng], { icon: fireIcon })
@@ -372,10 +337,7 @@
 
         live.set(id, { marker, tickerSpan: chip, expiresAt: exp });
 
-        // Geocode if missing coords (normal feed)
-        if (marker == null) {
-          maybeGeocodeAndDropPin_Normal(a, id);
-        }
+        if (marker == null) maybeGeocodeAndDropPin_Normal(a, id);
       }
 
       cleanupExpired();
@@ -386,12 +348,11 @@
 
   function startPolling() {
     if (timer) return;
-    tick(); // immediate
+    tick();
     timer = setInterval(tick, POLL_MS);
     if (!cleanupTimer) cleanupTimer = setInterval(cleanupExpired, 10000);
   }
   function stopPolling() { clearInterval(timer); timer = null; }
-
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') startPolling();
     else stopPolling();
@@ -422,29 +383,28 @@
   const criticalBar = document.getElementById('criticalBar');
   const critLive = new Map(); // id -> { el, marker, expiresAt }
 
+  // <<< NEW: chip text = "callType - address - time"
   function makeCritChip(a) {
-  const dot = document.createElement('span');
-  dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
+    const dot = document.createElement('span');
+    dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff3b3b;';
+    const txt = document.createElement('span');
 
-  const txt = document.createElement('span');
+    // Prefer callType; fall back to UPPERCASE category
+    const title = (a.callType && String(a.callType).trim())
+      || ((a.category ? String(a.category).toUpperCase() : 'CRITICAL'));
 
-  // Prefer callType; fall back to category (uppercased) if missing
-  const title = (a.callType && String(a.callType).trim())
-    || ((a.category ? String(a.category).toUpperCase() : 'CRITICAL'));
+    const addr = [a.location || '', a.city || '', a.state || 'NY'].filter(Boolean).join(', ');
+    const time = fmtTime(a.eventTimestamp);
 
-  const addr  = [a.location || '', a.city || '', a.state || 'NY']
-    .filter(Boolean).join(', ');
-  const time  = fmtTime(a.eventTimestamp);
+    txt.textContent = `${title} - ${addr} - ${time}`;
 
-  txt.textContent = `${title} - ${addr} - ${time}`;
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.append(dot, txt);
+    return chip;
+  }
 
-  const chip = document.createElement('span');
-  chip.className = 'chip';
-  chip.append(dot, txt);
-  return chip;
-}
-
-
+  // Robust fetch + normalize for critical feed
   async function fetchCriticalOnce() {
     const res = await fetch(cacheBusted(CRIT_URL), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP '+res.status);
@@ -452,11 +412,12 @@
 
     const items = (json.results || []).map(r => {
       const eventTimestamp = r.eventTimestamp || r.timestamp || r.time || r.receivedAt || r.createdAt || new Date().toISOString();
+      const callType = r.callType ?? r.type ?? r.title ?? r.event ?? r.call ?? r.description ?? r.details ?? '';
       return {
         id: r.uniqueKey || r.id || `${eventTimestamp || ''}-${r.location || ''}`,
         category: r.category || 'CRITICAL',
-        callType: r.callType || '',
-        location: r.location || '',
+        callType: (callType != null ? String(callType) : ''),
+        location: r.location || r.address || r.addr || '',
         city: r.city || '',
         state: r.state || 'NY',
         eventTimestamp,
@@ -477,9 +438,7 @@
         critLive.delete(id);
       }
     }
-    if (critLive.size === 0) {
-      criticalBar.textContent = 'No critical alerts.';
-    }
+    if (critLive.size === 0) criticalBar.textContent = 'No critical alerts.';
   }
 
   async function tickCritical() {
@@ -494,6 +453,7 @@
         const id = a.id;
         const tsMs = parseTs(a.eventTimestamp);
         const exp = Math.max(now, (Number.isNaN(tsMs) ? now : tsMs) + TTL_MS);
+
         if (critLive.has(id)) {
           critLive.get(id).expiresAt = Math.max(critLive.get(id).expiresAt, exp);
           continue;
@@ -510,22 +470,15 @@
 
         critLive.set(id, { el: chip, marker, expiresAt: exp });
 
-        // Geocode if missing coords (critical feed)
-        if (marker == null) {
-          maybeGeocodeAndDropPin_Critical(a, id);
-        }
-
+        if (marker == null) maybeGeocodeAndDropPin_Critical(a, id);
         introduced++;
       }
 
       if (introduced > 0) {
-        criticalBar.classList.remove('flash-twice');
-        void criticalBar.offsetWidth;
+        criticalBar.classList.remove('flash-twice'); void criticalBar.offsetWidth;
         criticalBar.classList.add('flash-twice');
         beep(2, 140, 120, 988);
-        criticalBar.addEventListener('animationend', () => {
-          criticalBar.classList.remove('flash-twice');
-        }, { once: true });
+        criticalBar.addEventListener('animationend', () => criticalBar.classList.remove('flash-twice'), { once: true });
       }
 
       cleanupCritical();
@@ -534,27 +487,17 @@
     }
   }
 
-  /* ===== Geocoding (single copy) ===== */
+  /* ===== Geocoding ===== */
   const GEOCODE_RATE_MS = 1200;
-  const GEOCODE_TTL_MS  = 7 * 24 * 60 * 60 * 1000;  // 7 days cache
+  const GEOCODE_TTL_MS  = 7 * 24 * 60 * 60 * 1000;
   const GEOCODE_BOUNDS  = { minLon: -73.90, minLat: 40.50, maxLon: -73.40, maxLat: 40.90 };
 
   const geoCache = {
-    get(key) {
-      try {
-        const raw = localStorage.getItem('geo_'+key);
-        if (!raw) return null;
-        const obj = JSON.parse(raw);
-        if (!obj || (obj.t && (Date.now()-obj.t) > GEOCODE_TTL_MS)) return null;
-        return obj;
-      } catch { return null; }
-    },
-    set(key, lat, lng) {
-      try { localStorage.setItem('geo_'+key, JSON.stringify({lat,lng,t:Date.now()})); } catch {}
-    }
+    get(key) { try { const raw = localStorage.getItem('geo_'+key); if (!raw) return null; const obj = JSON.parse(raw); if (!obj || (obj.t && (Date.now()-obj.t) > GEOCODE_TTL_MS)) return null; return obj; } catch { return null; } },
+    set(key, lat, lng) { try { localStorage.setItem('geo_'+key, JSON.stringify({lat,lng,t:Date.now()})); } catch {} }
   };
 
-  const geocodeQueue = []; // items: { key, query, onResult }
+  const geocodeQueue = [];
   let geocodeTimer = null;
 
   function enqueueGeocode(key, query, onResult) {
@@ -564,20 +507,13 @@
   }
 
   async function processGeocodeQueue() {
-    if (!geocodeQueue.length) {
-      clearInterval(geocodeTimer);
-      geocodeTimer = null;
-      return;
-    }
+    if (!geocodeQueue.length) { clearInterval(geocodeTimer); geocodeTimer = null; return; }
     const job = geocodeQueue.shift();
     try {
       const { key, query, onResult } = job;
 
       const cached = geoCache.get(key);
-      if (cached && isFinite(cached.lat) && isFinite(cached.lng)) {
-        onResult(cached.lat, cached.lng);
-        return;
-      }
+      if (cached && isFinite(cached.lat) && isFinite(cached.lng)) { onResult(cached.lat, cached.lng); return; }
 
       const url = new URL('https://nominatim.openstreetmap.org/search');
       url.searchParams.set('format', 'json');
@@ -594,11 +530,7 @@
       const arr = await res.json();
       if (Array.isArray(arr) && arr.length) {
         const lat = Number(arr[0].lat), lng = Number(arr[0].lon);
-        if (isFinite(lat) && isFinite(lng)) {
-          geoCache.set(key, lat, lng);
-          onResult(lat, lng);
-          return;
-        }
+        if (isFinite(lat) && isFinite(lng)) { geoCache.set(key, lat, lng); onResult(lat, lng); return; }
       }
       onResult(null, null);
     } catch (e) {
@@ -609,45 +541,33 @@
 
   function maybeGeocodeAndDropPin_Normal(a, id) {
     if (typeof a.lat === 'number' && typeof a.lng === 'number') return;
-    const entry = live.get(id);
-    if (!entry) return;
+    const entry = live.get(id); if (!entry) return;
     if ((entry.expiresAt - Date.now()) < 30000) return;
     const addrParts = [a.location || '', a.city || '', a.state || 'NY'].filter(Boolean).join(', ');
     if (!a.location) return;
     const cacheKey = addrParts.toLowerCase();
     enqueueGeocode(cacheKey, addrParts, (lat, lng) => {
       if (lat == null || lng == null) return;
-      const curr = live.get(id);
-      if (!curr || curr.expiresAt <= Date.now()) return;
+      const curr = live.get(id); if (!curr || curr.expiresAt <= Date.now()) return;
       const color = colorFor(a);
-      const marker = makeMarker(lat, lng, color, a);
-      curr.marker = marker;
+      curr.marker = makeMarker(lat, lng, color, a);
     });
   }
 
   function maybeGeocodeAndDropPin_Critical(a, id) {
-    const entry = critLive.get(id);
-    if (!entry) return;
+    const entry = critLive.get(id); if (!entry) return;
     if ((entry.expiresAt - Date.now()) < 30000) return;
-
-    // Build robust address from location + city + state (defaults to NY)
-    const base = a.location || '';
-    const city = a.city || '';
-    const state = a.state || 'NY';
-    if (!base) return; // need at least a street or place
-    const addr = [base, city, state].filter(Boolean).join(', ');
-
+    const addr = [a.location || '', a.city || '', a.state || 'NY'].filter(Boolean).join(', ');
+    if (!a.location) return;
     const cacheKey = 'crit:' + addr.toLowerCase();
     enqueueGeocode(cacheKey, addr, (lat, lng) => {
       if (lat == null || lng == null) return;
-      const curr = critLive.get(id);
-      if (!curr || curr.expiresAt <= Date.now()) return;
-      const marker = makeFireMarker(lat, lng, a);
-      curr.marker = marker;
+      const curr = critLive.get(id); if (!curr || curr.expiresAt <= Date.now()) return;
+      curr.marker = makeFireMarker(lat, lng, a);
     });
   }
 
-  /* ===== Left Note Pad (user-editable, with UI) ===== */
+  /* ===== Left Note Pad (user-editable) ===== */
   const BULLETIN_KEY = 'bulletin_text_v1';
   const bulletinEl   = document.getElementById('bulletin');
   const saveBtn      = document.getElementById('bulletinSave');
@@ -656,14 +576,7 @@
   const statusEl     = document.getElementById('bulletinStatus');
 
   let bulletinDirty = false;
-
-  function bulletinLoad() {
-    try {
-      const saved = localStorage.getItem(BULLETIN_KEY);
-      if (saved) bulletinEl.innerHTML = saved;
-    } catch {}
-    statusEl.textContent = '';
-  }
+  function bulletinLoad() { try { const saved = localStorage.getItem(BULLETIN_KEY); if (saved) bulletinEl.innerHTML = saved; } catch {} statusEl.textContent=''; }
   function bulletinSave() {
     try {
       localStorage.setItem(BULLETIN_KEY, bulletinEl.innerHTML);
@@ -671,47 +584,22 @@
       const t = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
       statusEl.textContent = `Saved ${t}`;
       setTimeout(() => (statusEl.textContent = ''), 3000);
-    } catch (e) {
-      statusEl.textContent = 'Save failed';
-    }
+    } catch { statusEl.textContent = 'Save failed'; }
   }
-  function bulletinClear() {
-    if (!confirm('Clear bulletin and remove saved copy?')) return;
-    bulletinEl.innerHTML = '';
-    try { localStorage.removeItem(BULLETIN_KEY); } catch {}
-    statusEl.textContent = 'Cleared';
-    setTimeout(() => (statusEl.textContent = ''), 2000);
-  }
+  function bulletinClear() { if (!confirm('Clear bulletin and remove saved copy?')) return; bulletinEl.innerHTML = ''; try { localStorage.removeItem(BULLETIN_KEY); } catch {} statusEl.textContent='Cleared'; setTimeout(()=>statusEl.textContent='',2000); }
   function bulletinRevert() { bulletinLoad(); }
   bulletinEl.addEventListener('input', () => { bulletinDirty = true; });
   saveBtn.addEventListener('click', bulletinSave);
   revertBtn.addEventListener('click', bulletinRevert);
   clearBtn.addEventListener('click', bulletinClear);
   setInterval(() => { if (bulletinDirty) bulletinSave(); }, 10000);
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-      e.preventDefault();
-      bulletinSave();
-    }
-  });
+  document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); bulletinSave(); } });
 
-  /* ===== Right Board (independent, code-controlled only) ===== */
+  /* ===== Right Board (code-controlled only) ===== */
   const BULLETIN_READ_KEY = 'bulletin_read_text_v1';
   const readEl = document.getElementById('bulletinRead');
-
-  function readBoardLoad() {
-    try {
-      const saved = localStorage.getItem(BULLETIN_READ_KEY);
-      if (saved) readEl.innerHTML = saved;
-    } catch {}
-  }
-
-  function setReadBoard(html) {
-    try {
-      localStorage.setItem(BULLETIN_READ_KEY, html);
-      readEl.innerHTML = html;
-    } catch {}
-  }
+  function readBoardLoad() { try { const saved = localStorage.getItem(BULLETIN_READ_KEY); if (saved) readEl.innerHTML = saved; } catch {} }
+  function setReadBoard(html) { try { localStorage.setItem(BULLETIN_READ_KEY, html); readEl.innerHTML = html; } catch {} }
   window.setReadBoard = setReadBoard;
 
   /* ===== TEMPORARY LAYOUT DRAG (no persistence) ===== */
@@ -723,113 +611,45 @@
 
   function setEditMode(on) {
     document.body.classList.toggle('edit-mode', on);
-    Array.from(mainEl.children).forEach(card => {
-      if (card.classList.contains('card')) card.draggable = !!on;
-    });
+    Array.from(mainEl.children).forEach(card => { if (card.classList.contains('card')) card.draggable = !!on; });
     resetBtn.style.display = on ? 'inline-block' : 'none';
-    if (!on && typeof map?.invalidateSize === 'function') {
-      setTimeout(() => map.invalidateSize(), 50);
-    }
+    if (!on && typeof map?.invalidateSize === 'function') setTimeout(() => map.invalidateSize(), 50);
   }
+  function handleDragStart(e) { const card = e.currentTarget; dragSrcEl = card; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', card.dataset.cardId || ''); }
+  function handleDragEnd(e) { e.currentTarget.classList.remove('dragging'); dragSrcEl = null; if (typeof map?.invalidateSize === 'function') setTimeout(() => map.invalidateSize(), 50); }
+  function handleDragOver(e) { if (!editOn) return; e.preventDefault(); const target = e.target.closest('.card'); if (!target || target === dragSrcEl) return; const rect = target.getBoundingClientRect(); const before = (e.clientY - rect.top) < rect.height/2; if (before) mainEl.insertBefore(dragSrcEl, target); else mainEl.insertBefore(dragSrcEl, target.nextSibling); }
+  function initDragAndDrop() { mainEl.addEventListener('dragover', handleDragOver); Array.from(mainEl.children).forEach(card => { if (!card.classList.contains('card')) return; card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd); }); }
+  if (editBtn) editBtn.addEventListener('click', () => { editOn = !editOn; editBtn.textContent = editOn ? 'Done' : 'Edit layout'; setEditMode(editOn); if (editOn) initDragAndDrop(); });
+  if (resetBtn) resetBtn.addEventListener('click', () => { location.reload(); });
 
-  function handleDragStart(e) {
-    const card = e.currentTarget;
-    dragSrcEl = card;
-    card.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', card.dataset.cardId || '');
-  }
-  function handleDragEnd(e) {
-    e.currentTarget.classList.remove('dragging');
-    dragSrcEl = null;
-    if (typeof map?.invalidateSize === 'function') {
-      setTimeout(() => map.invalidateSize(), 50);
-    }
-  }
-  function handleDragOver(e) {
-    if (!editOn) return;
-    e.preventDefault(); // allow drop
-    const target = e.target.closest('.card');
-    if (!target || target === dragSrcEl) return;
-    const rect = target.getBoundingClientRect();
-    const before = (e.clientY - rect.top) < rect.height / 2;
-    if (before) mainEl.insertBefore(dragSrcEl, target);
-    else mainEl.insertBefore(dragSrcEl, target.nextSibling);
-  }
-  function initDragAndDrop() {
-    mainEl.addEventListener('dragover', handleDragOver);
-    Array.from(mainEl.children).forEach(card => {
-      if (!card.classList.contains('card')) return;
-      card.addEventListener('dragstart', handleDragStart);
-      card.addEventListener('dragend', handleDragEnd);
-    });
-  }
-
-  if (editBtn) {
-    editBtn.addEventListener('click', () => {
-      editOn = !editOn;
-      editBtn.textContent = editOn ? 'Done' : 'Edit layout';
-      setEditMode(editOn);
-      if (editOn) initDragAndDrop();
-    });
-  }
-  if (resetBtn) {
-    resetBtn.addEventListener('click', () => { location.reload(); });
-  }
-
-  // ===== FULLSCREEN (all cards) =====
-  let fsCard = null;     // currently fullscreen card
-  let fsBackdrop = null;
+  /* ===== Fullscreen (all cards) ===== */
+  let fsCard = null, fsBackdrop = null;
   function enterFullscreen(card) {
-    if (fsCard) exitFullscreen(); // safety
-    fsBackdrop = document.createElement('div');
-    fsBackdrop.id = 'fsBackdrop';
-    document.body.appendChild(fsBackdrop);
-    document.body.classList.add('fs-open');
-
-    card.classList.add('is-fullscreen');
-    fsCard = card;
-
-    // Outside click exits
+    if (fsCard) exitFullscreen();
+    fsBackdrop = document.createElement('div'); fsBackdrop.id = 'fsBackdrop'; document.body.appendChild(fsBackdrop);
+    document.body.classList.add('fs-open'); card.classList.add('is-fullscreen'); fsCard = card;
     fsBackdrop.addEventListener('click', exitFullscreen, { once: true });
-    // Esc exits
     document.addEventListener('keydown', escListener);
-
-    // If the fullscreen card contains the Leaflet map, reflow it
-    if (card.contains(mapEl) && typeof map?.invalidateSize === 'function') {
-      setTimeout(() => map.invalidateSize(), 80);
-    }
+    if (card.contains(mapEl) && typeof map?.invalidateSize === 'function') setTimeout(() => map.invalidateSize(), 80);
   }
   function escListener(e) { if (e.key === 'Escape') exitFullscreen(); }
   function exitFullscreen() {
     if (!fsCard) return;
     fsCard.classList.remove('is-fullscreen');
     if (fsBackdrop && fsBackdrop.parentNode) fsBackdrop.parentNode.removeChild(fsBackdrop);
-    fsBackdrop = null;
-    document.body.classList.remove('fs-open');
-    document.removeEventListener('keydown', escListener);
-
-    if (typeof map?.invalidateSize === 'function') {
-      setTimeout(() => map.invalidateSize(), 80);
-    }
+    fsBackdrop = null; document.body.classList.remove('fs-open'); document.removeEventListener('keydown', escListener);
+    if (typeof map?.invalidateSize === 'function') setTimeout(() => map.invalidateSize(), 80);
     fsCard = null;
   }
   function toggleFS(card) { if (fsCard === card) exitFullscreen(); else enterFullscreen(card); }
-  document.querySelectorAll('main .card > h2').forEach(h2 => {
-    h2.classList.add('click-fs');
-    h2.addEventListener('click', () => {
-      const card = h2.closest('.card');
-      if (!card) return;
-      toggleFS(card);
-    });
-  });
+  document.querySelectorAll('main .card > h2').forEach(h2 => { h2.classList.add('click-fs'); h2.addEventListener('click', () => { const card = h2.closest('.card'); if (!card) return; toggleFS(card); }); });
 
   /* ===== Start everything ===== */
   function init() {
-    bulletinLoad();     // left-board load
-    readBoardLoad();    // right-board load
-    startPolling();     // normal feed
-    setInterval(tickCritical, 15000); // critical feed
+    bulletinLoad();
+    readBoardLoad();
+    startPolling();
+    setInterval(tickCritical, 15000);
     tickCritical();
   }
   init();
